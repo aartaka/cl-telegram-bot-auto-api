@@ -4,6 +4,6 @@
   :license  "BSD 2-Clause"
   :version "0.0.1"
   :serial t
-  :depends-on ("dexador" "njson/cl-json" "bordeaux-threads")
+  :depends-on ("dexador" "njson/cl-json" "bordeaux-threads" "serapeum")
   :components ((:file "package")
                (:file "cl-telegram-bot-auto-api")))
