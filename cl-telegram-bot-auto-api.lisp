@@ -12,12 +12,12 @@
 (defmacro define-tg-apis ()
   (let ((api (njson:decode (or (ignore-errors (dex:get *tg-api-json-url*))
                                *tg-api-json-pathname*)))
-        (types (serapeum:dict 'equalp
+        (types (serapeum:dict 'equal
                               "int" 'integer
                               "float" 'float
                               "str" 'string
                               "file" 'pathname
-                              "bool" 'boolean
+                              "bool" 't
                               "array" 'sequence))
         (parents (serapeum:dict)))
     (labels ((json->name (json-name)
