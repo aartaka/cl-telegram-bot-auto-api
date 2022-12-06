@@ -82,7 +82,33 @@
                                                (loop for arg in optional-args
                                                      collect (json->name (njson:jget "name" arg)))
                                                '(&allow-other-keys))))
-                                (:documentation ,(njson:jget "description" method))))))
+                                ,@(labels ((type-combinations (types)
+                                             (if (rest types)
+                                                 (loop for type in (first types)
+                                                       append (loop for ending in (type-combinations (rest types))
+                                                                    collect (cons type ending)))
+                                                 (mapcar #'list (first types)))))
+                                    (let ((combinations (type-combinations
+                                                         (mapcar (lambda (arg)
+                                                                   (mapcar #'type-name (njson:jget "type" arg)))
+                                                                 required-args))))
+                                      (if combinations
+                                          (loop for combination in combinations
+                                                collect `(:method (,@(loop for arg in required-args
+                                                                           for type in combination
+                                                                           collect (list (json->name (njson:jget "name" arg))
+                                                                                         type))
+                                                                   ,@(when optional-args
+                                                                       (append '(&rest args &key)
+                                                                               (loop for arg in optional-args
+                                                                                     collect (json->name (njson:jget "name" arg)))
+                                                                               '(&allow-other-keys))))))
+                                          `((:method (,@(when optional-args
+                                                          (append '(&rest args &key)
+                                                                  (loop for arg in optional-args
+                                                                        collect (json->name (njson:jget "name" arg)))
+                                                                  '(&allow-other-keys)))))))))
+                                  (:documentation ,(njson:jget "description" method))))))
       (prog1
           `(progn
              ,@(define-generics (njson:jget "generics" api))
