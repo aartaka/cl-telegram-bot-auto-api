@@ -13,7 +13,7 @@
                                  "file" 'pathname
                                  "bool" 't
                                  "array" 'sequence))
-  (defvar *parents* nil)
+  (defvar *parents* (serapeum:dict))
   (defvar *api-url* "https://api.telegram.org/")
   (defvar *token* nil))
 
