@@ -24,7 +24,24 @@
             class-symbol
             (loop for (key . value) in (alexandria:hash-table-alist  object)
                   collect (alexandria:make-keyword (string-upcase (substitute #\- #\_ key)))
-                  collect value)))
+                  collect (if (or (numberp value)
+                                  (stringp value))
+                              value
+                              (flet ((primitive-p (type)
+                                       (member type '(integer float string pathname t nil))))
+                                (let* ((slot (find (json->name key) (closer-mop:class-direct-slots (find-class class-symbol nil))
+                                                   :key #'closer-mop:slot-definition-name))
+                                       (slot-type (when slot
+                                                    (closer-mop:slot-definition-type slot)))
+                                       (real-type (typecase slot-type
+                                                    (null nil)
+                                                    (list (cond
+                                                            ((eq (first slot-type) 'or)
+                                                             (first (remove-if #'primitive-p slot-type)))))
+                                                    (symbol slot-type))))
+                                  (if (primitive-p real-type)
+                                      value
+                                      (parse-as real-type value))))))))
     (sequence (map 'list (alexandria:curry #'parse-as class-symbol)
                    object))
     (t (unless (typep (find-class class-symbol nil) 'standard-class)
@@ -93,7 +110,10 @@
                                           :accessor ,(json->name (njson:jget "name" param))
                                           :initarg ,(alexandria:make-keyword (json->name (njson:jget "name" param)))
                                           ,@(alexandria:when-let ((types (mapcar #'type-name (njson:jget "type" param))))
-                                              `(:type (or ,@types)))
+                                              (case (cl:length types)
+                                                (0 nil)
+                                                (1 `(:type ,@types))
+                                                (t `(:type (or ,@types)))))
                                           :documentation ,(njson:jget "description" param))))
                        (:documentation ,(njson:jget "description" class))))
           append (loop for param in (njson:jget "params" class)
@@ -127,7 +147,7 @@
                                             append (loop for ending in (type-combinations (rest types))
                                                          collect (cons type ending)))
                                       (mapcar #'list (first types))))
-                                (method-body (method required-arg-names)
+                                (method-body (method required-arg-names rest-args?)
                                   `(let ((result
                                            (apply
                                             #'invoke-method
@@ -136,7 +156,7 @@
                                              (list ,@(loop for name in required-arg-names
                                                            append (list (alexandria:make-keyword name)
                                                                         name)))
-                                             args))))
+                                             ,(if rest-args? 'args '())))))
                                      ,(if (equal '("true") (njson:jget "return" method))
                                           'result
                                           `(parse-as (quote ,(multiple-value-bind (type array? array-type)
@@ -159,13 +179,13 @@
                                                                     optional-arg-names
                                                                     '(&allow-other-keys))))
                                                 (declare (ignorable ,@required-arg-names ,@optional-arg-names))
-                                                ,(method-body method required-arg-names)))
+                                                ,(method-body method required-arg-names optional-args)))
                                `((:method (,@(when optional-args
                                                (append '(&rest args &key)
                                                        optional-arg-names
                                                        '(&allow-other-keys))))
                                    (declare (ignorable ,@optional-arg-names))
-                                   ,(method-body method required-arg-names))))))
+                                   ,(method-body method required-arg-names optional-args))))))
                      (:documentation ,(njson:jget "description" method)))))
   (defmacro define-tg-apis ()
     (let ((api (njson:decode (or (ignore-errors (dex:get *tg-api-json-url*))
