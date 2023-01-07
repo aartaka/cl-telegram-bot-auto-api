@@ -217,7 +217,7 @@
     (macrolet ((when-apply (function slot)
                  (alexandria:once-only ((value `(funcall (function ,slot) update)))
                    `(when ,value
-                      (apply (function ,function) ,value)))))
+                      (,function ,value)))))
       (when-apply on-message message)
       (when-apply on-edited-message edited-message)
       (when-apply on-channel-post channel-post)
