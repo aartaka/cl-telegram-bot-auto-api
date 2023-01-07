@@ -238,17 +238,23 @@
   (:documentation "Process the parts of the update (if present), be it message, chat join request, or whatever."))
 
 (serapeum:export-always 'start)
-(defun start (token &key update-callback (timeout 10))
-  (bt:make-thread
-   (lambda ()
-     (loop with last-id = nil
-           while t
-           for updates = (apply #'get-updates
-                                :timeout timeout
-                                (when last-id
-                                  (list :offset last-id)))
-           do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
-           when updates
-             do (map nil (or update-callback #'on-update) updates)))
-   :initial-bindings `((*token* . ,token))
-   :name "Telegram bot thread"))
+(defvar *thread* nil)
+(let (*thread*)
+  (defun start (token &key update-callback (timeout 10))
+    (setf *thread*
+          (bt:make-thread
+           (lambda ()
+             (loop with last-id = nil
+                   while t
+                   for updates = (apply #'get-updates
+                                        :timeout timeout
+                                        (when last-id
+                                          (list :offset last-id)))
+                   do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
+                   when updates
+                     do (map nil (or update-callback #'on-update) updates)))
+           :initial-bindings `((*token* . ,token)
+                               (*thread* . *thread*))
+           :name "Telegram bot thread")))
+  (defun stop ()
+    (bt:destroy-thread *thread*)))
