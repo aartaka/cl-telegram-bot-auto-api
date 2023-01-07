@@ -233,6 +233,7 @@
       (when-apply on-chat-join-request chat-join-request)))
   (:documentation "Process the parts of the update (if present), be it message, chat join request, or whatever."))
 
+(serapeum:export-always 'start)
 (defun start (token &key update-callback (timeout 10))
   (bt:make-thread
    (lambda ()
