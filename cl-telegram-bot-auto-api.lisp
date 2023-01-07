@@ -107,6 +107,7 @@
                                       ((object ,class-name))
                                     (setf (slot-value object (quote ,name))
                                           ,(alexandria:if-let
+                                               ;; TODO: Fix the type detection for parse-as consistency.
                                                ((type (set-difference (mapcar #'type-name (njson:jget "type" param))
                                                                       '(integer float string pathname t nil sequence))))
                                              `(parse-as (quote ,(first type)) (call-next-method))
