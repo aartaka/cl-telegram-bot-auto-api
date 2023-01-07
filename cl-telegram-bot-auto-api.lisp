@@ -64,6 +64,7 @@
         (error (njson:jget "description" return)))))
 
 (serapeum:eval-always
+  (defclass telegram-object () ())
   (defun json->name (json-name)
     (alexandria:symbolicate
      (cond
@@ -93,7 +94,7 @@
                (setf (gethash (json->name subtype) *parents*)
                      name))
           collect `(serapeum:export-always (quote ,name))
-          collect `(defclass ,name () ())))
+          collect `(defclass ,name (telegram-object) ())))
   (defun define-classes (json)
     (loop for class in json
           for class-name
@@ -102,8 +103,9 @@
                    class-name)
           collect `(serapeum:export-always (quote ,class-name))
           collect (let ((class-name class-name))
-                    `(defclass ,class-name (,@(when (gethash class-name *parents*)
-                                                (list (gethash class-name *parents*))))
+                    `(defclass ,class-name (,@(if (gethash class-name *parents*)
+                                                  (list (gethash class-name *parents*))
+                                                  (list 'telegram-object)))
                        (,@(loop for param in (njson:jget "params" class)
                                 for name = (json->name (njson:jget "name" param))
                                 collect `(,(json->name (njson:jget "name" param))
