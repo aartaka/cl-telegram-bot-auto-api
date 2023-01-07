@@ -126,16 +126,17 @@
                                              `(call-next-method))))))))
   (defun define-methods (json)
     (loop for method in json
+          for params = (njson:jget "params" method)
           for method-name
             = (json->name (njson:jget "name" method))
           for required-args
             = (remove-if (alexandria:curry #'njson:jget "optional")
-                         (njson:jget "params" method))
+                         params)
           for required-arg-names
             = (loop for arg in required-args
                     collect (json->name (njson:jget "name" arg)))
           for optional-args
-            = (set-difference (njson:jget "params" method) required-args)
+            = (set-difference params required-args)
           for optional-arg-names
             = (loop for arg in optional-args
                     collect (json->name (njson:jget "name" arg)))
@@ -188,7 +189,17 @@
                                                        '(&allow-other-keys))))
                                    (declare (ignorable ,@optional-arg-names))
                                    ,(method-body method required-arg-names optional-args))))))
-                     (:documentation ,(njson:jget "description" method)))))
+                     (:documentation ,(apply
+                                       #'concatenate
+                                       'string
+                                       (njson:jget "description" method)
+                                       (string #\newline)
+                                       (mapcar
+                                        (lambda (p)
+                                          (format nil "~:@(~a~) -- ~a~&"
+                                                  (substitute #\- #\_ (njson:jget "name" p))
+                                                  (njson:jget "description" p)))
+                                        params))))))
   (defmacro define-tg-apis ()
     (let ((api (njson:decode (or (ignore-errors (dex:get *tg-api-json-url*))
                                  *tg-api-json-pathname*))))
