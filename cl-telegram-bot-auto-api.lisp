@@ -3,9 +3,6 @@
 (serapeum:eval-always
   (defvar *tg-api-json-url* "https://raw.githubusercontent.com/rockneurotiko/telegram_api_json/master/exports/tg_api.json")
   (defvar *tg-api-json-pathname* (asdf:system-relative-pathname "cl-telegram-bot-auto-api" "telegram_api_json/tg_api.json"))
-  (defvar *tg-api*
-    (njson:decode (or (ignore-errors (dex:get *tg-api-json-url*))
-                      *tg-api-json-pathname*)))
   (defvar *types* (serapeum:dict 'equal
                                  "int" 'integer
                                  "float" 'float
