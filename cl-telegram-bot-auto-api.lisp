@@ -198,3 +198,52 @@
          ,@(define-methods (njson:jget "methods" api))))))
 
 (define-tg-apis)
+
+(macrolet ((d (name)
+             `(progn
+                (serapeum:export-always (quote ,name))
+                (defgeneric ,name (object)))))
+  (d on-message) (d on-edited-message)
+  (d on-channel-post) (d on-edited-channel-post)
+  (d on-inline-query) (d on-chosen-inline-result) (d on-callback-query)
+  (d on-shipping-query) (d on-pre-checkout-query)
+  (d on-poll) (d on-poll-answer)
+  (d on-chat-member) (d on-my-chat-member) (d on-chat-join-request))
+
+(serapeum:export-always 'on-update)
+(defgeneric on-update (update)
+  (:method ((update update))
+    (macrolet ((when-apply (function slot)
+                 (alexandria:once-only ((value `(funcall (function ,slot) update)))
+                   `(when ,value
+                      (apply (function ,function) ,value)))))
+      (when-apply on-message message)
+      (when-apply on-edited-message edited-message)
+      (when-apply on-channel-post channel-post)
+      (when-apply on-edited-channel-post edited-channel-post)
+      (when-apply on-inline-query inline-query)
+      (when-apply on-chosen-inline-result chosen-inline-result)
+      (when-apply on-callback-query callback-query)
+      (when-apply on-shipping-query shipping-query)
+      (when-apply on-pre-checkout-query pre-checkout-query)
+      (when-apply on-poll poll)
+      (when-apply on-poll-answer poll-answer)
+      (when-apply on-chat-member chat-member)
+      (when-apply on-my-chat-member my-chat-member)
+      (when-apply on-chat-join-request chat-join-request)))
+  (:documentation "Process the parts of the update (if present), be it message, chat join request, or whatever."))
+
+(defun start (token &key update-callback (timeout 10))
+  (bt:make-thread
+   (lambda ()
+     (loop with last-id = nil
+           while t
+           for updates = (apply #'get-updates
+                                :timeout timeout
+                                (when last-id
+                                  (list :offset last-id)))
+           do (setf last-id (1+ (reduce #'max updates :key #'update-id)))
+           when updates
+             do (map nil (or update-callback #'on-update) updates)))
+   :initial-bindings `((*token* . ,token))
+   :name "Telegram bot thread"))
