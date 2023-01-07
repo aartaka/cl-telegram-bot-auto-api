@@ -58,17 +58,33 @@
        (t
         (cl-json:simplified-camel-case-to-lisp json-name)))
      :tga))
-  (defun type-name (string)
-    (let ((type (cond
-                  ((listp string)
-                   (first string))
-                  (t string)))
-          (array? (and (listp string)
-                       (equal "array" (first string)))))
-      (values (or (gethash type *types*)
-                  (json->name type))
-              (when array? t)
-              (when array? (type-name (first (second string)))))))
+  (defun type-name (type)
+    "Returns two values:
+- Primitive `parse-as'-friendly type, preferably atomic.  If the TYPE
+  is a mere \"array\" without element type, then, well, returns the
+  corresponding Lisp array type.
+- The outermost type. Same as the first value, unless array TYPE."
+    (cond
+     ((listp type)
+      (let* ((inner-type (labels ((inner-type (type)
+                                    (cond
+                                      ((and (listp type)
+                                            (equal "array" (first type)))
+                                       (inner-type (caadr type)))
+                                      ((listp type)
+                                       (first type))
+                                      (t type))))
+                           (inner-type type)))
+             (inner-type (or (gethash inner-type *types*)
+                             (json->name inner-type))))
+        (values
+         inner-type
+         (if (equal "array" (first type))
+             'sequence
+             inner-type))))
+     (t (let ((type (or (gethash type *types*)
+                        (json->name type))))
+          (values type type)))))
   (defun define-generics (json)
     (loop for generic in json
           for name = (json->name (njson:jget "name" generic))
@@ -107,7 +123,6 @@
                                       ((object ,class-name))
                                     (setf (slot-value object (quote ,name))
                                           ,(alexandria:if-let
-                                               ;; TODO: Fix the type detection for parse-as consistency.
                                                ((type (set-difference (mapcar #'type-name (njson:jget "type" param))
                                                                       '(integer float string pathname t nil sequence))))
                                              `(parse-as (quote ,(first type)) (call-next-method))
@@ -152,16 +167,13 @@
                                              ,(if rest-args? 'args '())))))
                                      ,(if (equal '("true") (njson:jget "return" method))
                                           'result
-                                          `(parse-as (quote ,(multiple-value-bind (type array? array-type)
-                                                                 (type-name (njson:jget "return" method))
-                                                               (if array?
-                                                                   array-type
-                                                                   type)))
+                                          `(parse-as (quote ,(type-name (njson:jget "return" method)))
                                                      result)))))
-                         (let ((combinations (type-combinations
-                                              (mapcar (lambda (arg)
-                                                        (mapcar #'type-name (njson:jget "type" arg)))
-                                                      required-args))))
+                               (let ((combinations (type-combinations
+                                                    (mapcar (lambda (arg)
+                                                              (mapcar (lambda (type) (nth-value 1 (type-name type)))
+                                                                      (njson:jget "type" arg)))
+                                                            required-args))))
                            (if combinations
                                (loop for combination in combinations
                                      collect `(:method (,@(loop for name in required-arg-names
