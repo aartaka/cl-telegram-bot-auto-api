@@ -166,11 +166,11 @@
                                           'result
                                           `(parse-as (quote ,(type-name (njson:jget "return" method)))
                                                      result)))))
-                               (let ((combinations (type-combinations
-                                                    (mapcar (lambda (arg)
-                                                              (mapcar (lambda (type) (nth-value 1 (type-name type)))
-                                                                      (njson:jget "type" arg)))
-                                                            required-args))))
+                         (let ((combinations (type-combinations
+                                              (mapcar (lambda (arg)
+                                                        (mapcar (lambda (type) (nth-value 1 (type-name type)))
+                                                                (njson:jget "type" arg)))
+                                                      required-args))))
                            (if combinations
                                (loop for combination in combinations
                                      collect `(:method (,@(loop for name in required-arg-names
