@@ -27,6 +27,15 @@
     (t (unless (typep (find-class class-symbol nil) 'standard-class)
          object))))
 
+(serapeum:export-always 'telegram-error)
+(define-condition telegram-error (error)
+  ((description :initarg :description
+                :accessor description))
+  (:report (lambda (condition stream)
+             (format stream "Telegram error:
+~a"
+                     (description condition)))))
+
 (defun invoke-method (method-name &rest args &key &allow-other-keys)
   (let ((return (njson:decode
                  (apply #'dex:post
@@ -41,7 +50,7 @@
                                                      value)))))))))
     (if (njson:jget "ok" return)
         (njson:jget "result" return)
-        (error (njson:jget "description" return)))))
+        (error 'telegram-error :description (njson:jget "description" return)))))
 
 (serapeum:eval-always
   (defclass telegram-object () ())
