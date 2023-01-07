@@ -24,24 +24,7 @@
             class-symbol
             (loop for (key . value) in (alexandria:hash-table-alist  object)
                   collect (alexandria:make-keyword (string-upcase (substitute #\- #\_ key)))
-                  collect (if (or (numberp value)
-                                  (stringp value))
-                              value
-                              (flet ((primitive-p (type)
-                                       (member type '(integer float string pathname t nil))))
-                                (let* ((slot (find (json->name key) (closer-mop:class-direct-slots (find-class class-symbol nil))
-                                                   :key #'closer-mop:slot-definition-name))
-                                       (slot-type (when slot
-                                                    (closer-mop:slot-definition-type slot)))
-                                       (real-type (typecase slot-type
-                                                    (null nil)
-                                                    (list (cond
-                                                            ((eq (first slot-type) 'or)
-                                                             (first (remove-if #'primitive-p slot-type)))))
-                                                    (symbol slot-type))))
-                                  (if (primitive-p real-type)
-                                      value
-                                      (parse-as real-type value))))))))
+                  collect value)))
     (sequence (map 'list (alexandria:curry #'parse-as class-symbol)
                    object))
     (t (unless (typep (find-class class-symbol nil) 'standard-class)
@@ -112,16 +95,22 @@
                                 collect `(,(json->name (njson:jget "name" param))
                                           :accessor ,(json->name (njson:jget "name" param))
                                           :initarg ,(alexandria:make-keyword (json->name (njson:jget "name" param)))
-                                          ,@(alexandria:when-let ((types (mapcar #'type-name (njson:jget "type" param))))
-                                              (case (cl:length types)
-                                                (0 nil)
-                                                (1 `(:type ,@types))
-                                                (t `(:type (or ,@types)))))
                                           :documentation ,(njson:jget "description" param))))
                        (:documentation ,(njson:jget "description" class))))
           append (loop for param in (njson:jget "params" class)
                        collect `(serapeum:export-always
-                                    (quote ,(json->name (njson:jget "name" param)))))))
+                                    (quote ,(json->name (njson:jget "name" param)))))
+          append (let ((class-name class-name))
+                   (loop for param in (njson:jget "params" class)
+                         for name = (json->name (njson:jget "name" param))
+                         collect `(defmethod ,name :around
+                                      ((object ,class-name))
+                                    (setf (slot-value object (quote ,name))
+                                          ,(alexandria:if-let
+                                               ((type (set-difference (mapcar #'type-name (njson:jget "type" param))
+                                                                      '(integer float string pathname t nil sequence))))
+                                             `(parse-as (quote ,(first type)) (call-next-method))
+                                             `(call-next-method))))))))
   (defun define-methods (json)
     (loop for method in json
           for method-name
@@ -215,7 +204,8 @@
 (defgeneric on-update (update)
   (:method ((update update))
     (macrolet ((when-apply (function slot)
-                 (alexandria:once-only ((value `(funcall (function ,slot) update)))
+                 (alexandria:once-only ((value `(when (slot-boundp update (quote ,slot))
+                                                  (,slot update))))
                    `(when ,value
                       (,function ,value)))))
       (when-apply on-message message)
@@ -244,7 +234,7 @@
                                 :timeout timeout
                                 (when last-id
                                   (list :offset last-id)))
-           do (setf last-id (1+ (reduce #'max updates :key #'update-id)))
+           do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
            when updates
              do (map nil (or update-callback #'on-update) updates)))
    :initial-bindings `((*token* . ,token))
