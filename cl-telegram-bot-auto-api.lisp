@@ -66,14 +66,15 @@
 (serapeum:eval-always
   (defclass telegram-object () ())
   (defun json->name (json-name)
-    (alexandria:symbolicate
+    (intern
      (cond
        ((some #'upper-case-p json-name)
         (cl-json:simplified-camel-case-to-lisp json-name))
        ((find #\_ json-name :test #'eql)
         (string-upcase (substitute #\- #\_ json-name)))
        (t
-        (cl-json:simplified-camel-case-to-lisp json-name)))))
+        (cl-json:simplified-camel-case-to-lisp json-name)))
+     :tga))
   (defun type-name (string)
     (let ((type (cond
                   ((listp string)
