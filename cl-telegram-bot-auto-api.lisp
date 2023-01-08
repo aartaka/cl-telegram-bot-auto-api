@@ -36,6 +36,14 @@
 ~a"
                      (description condition)))))
 
+(serapeum:export-always 'unimplemented)
+(define-condition unimplemented (error)
+  ((specifier :initarg :specifier
+              :accessor specifier))
+  (:report (lambda (condition stream)
+             (format stream "ON not implemented for ~a"
+                     (specifier condition)))))
+
 (defgeneric unparse (object)
   (:method ((object t))
     object)
@@ -231,40 +239,36 @@
 
 (define-tg-apis)
 
-(macrolet ((d (name)
-             `(progn
-                (serapeum:export-always (quote ,name))
-                (defgeneric ,name (object)))))
-  (d on-message) (d on-edited-message)
-  (d on-channel-post) (d on-edited-channel-post)
-  (d on-inline-query) (d on-chosen-inline-result) (d on-callback-query)
-  (d on-shipping-query) (d on-pre-checkout-query)
-  (d on-poll) (d on-poll-answer)
-  (d on-chat-member) (d on-my-chat-member) (d on-chat-join-request))
-
-(serapeum:export-always 'on-update)
-(defgeneric on-update (update)
-  (:method ((update update))
-    (macrolet ((when-apply (function slot)
+(serapeum:export-always 'on)
+(defgeneric on (object &rest args &key &allow-other-keys)
+  (:method ((object t) &rest args &key &allow-other-keys)
+    (declare (ignorable args))
+    (cerror "Ignore undefined method."
+            'undefined
+            :specifier (class-of object)))
+  (:method ((update update) &rest args &key &allow-other-keys)
+    (declare (ignorable args))
+    (macrolet ((when-apply-on (slot)
                  (alexandria:once-only ((value `(when (slot-boundp update (quote ,slot))
                                                   (,slot update))))
                    `(when ,value
-                      (,function ,value)))))
-      (when-apply on-message message)
-      (when-apply on-edited-message edited-message)
-      (when-apply on-channel-post channel-post)
-      (when-apply on-edited-channel-post edited-channel-post)
-      (when-apply on-inline-query inline-query)
-      (when-apply on-chosen-inline-result chosen-inline-result)
-      (when-apply on-callback-query callback-query)
-      (when-apply on-shipping-query shipping-query)
-      (when-apply on-pre-checkout-query pre-checkout-query)
-      (when-apply on-poll poll)
-      (when-apply on-poll-answer poll-answer)
-      (when-apply on-chat-member chat-member)
-      (when-apply on-my-chat-member my-chat-member)
-      (when-apply on-chat-join-request chat-join-request)))
-  (:documentation "Process the parts of the update (if present), be it message, chat join request, or whatever."))
+                      (on ,value)))))
+      (when-apply-on message)
+      (when-apply-on edited-message)
+      (when-apply-on channel-post)
+      (when-apply-on edited-channel-post)
+      (when-apply-on inline-query)
+      (when-apply-on chosen-inline-result)
+      (when-apply-on callback-query)
+      (when-apply-on shipping-query)
+      (when-apply-on pre-checkout-query)
+      (when-apply-on poll)
+      (when-apply-on poll-answer)
+      (when-apply-on chat-member)
+      (when-apply-on my-chat-member)
+      (when-apply-on chat-join-request)))
+  (:documentation "The universal method to call on event objects Telegram gives.
+Default method only defined for `update', other methods throw"))
 
 (serapeum:export-always '(start stop))
 (defvar *thread* nil)
@@ -281,7 +285,7 @@
                                           (list :offset last-id)))
                    do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
                    when updates
-                     do (map nil (or update-callback #'on-update) updates)))
+                     do (map nil (or update-callback #'on) updates)))
            :initial-bindings `((*token* . ,token)
                                (*thread* . *thread*))
            :name "Telegram bot thread")))
