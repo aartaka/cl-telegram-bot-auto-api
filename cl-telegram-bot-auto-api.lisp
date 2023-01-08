@@ -234,14 +234,12 @@ Bot token and method name is appended to it.")
 (define-tg-apis)
 
 (serapeum:export-always 'on)
-(defgeneric on (object &rest args &key &allow-other-keys)
-  (:method ((object t) &rest args &key &allow-other-keys)
-    (declare (ignorable args))
+(defgeneric on (object)
+  (:method ((object t))
     (cerror "Ignore undefined method."
             'undefined
             :specifier (class-of object)))
-  (:method ((update update) &rest args &key &allow-other-keys)
-    (declare (ignorable args))
+  (:method ((update update))
     (macrolet ((when-apply-on (slot)
                  (alexandria:once-only ((value `(when (slot-boundp update (quote ,slot))
                                                   (,slot update))))
