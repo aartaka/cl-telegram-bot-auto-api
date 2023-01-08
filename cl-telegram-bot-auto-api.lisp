@@ -275,10 +275,10 @@ TIMEOUT is passed to `get-updates'."
                                             :timeout timeout
                                             (when last-id
                                               (list :offset last-id))))
-                   do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
                    when updates
                      do (with-protect
-                            (map nil (or update-callback #'on) updates))))
+                            (map nil (or update-callback #'on) updates))
+                   do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))))
            :initial-bindings `((*token* . ,token))
            :name (if name
                      (uiop:strcat "Telegram bot '" name "' thread")
