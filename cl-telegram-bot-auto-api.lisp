@@ -274,7 +274,7 @@ Default method only defined for `update', other methods throw"))
 (serapeum:export-always '(start stop))
 (defvar *thread* nil)
 (let (*thread*)
-  (defun start (token &key update-callback (timeout 10))
+  (defun start (token &key name update-callback (timeout 10))
     (setf *thread*
           (bt:make-thread
            (lambda ()
@@ -289,6 +289,8 @@ Default method only defined for `update', other methods throw"))
                      do (map nil (or update-callback #'on) updates)))
            :initial-bindings `((*token* . ,token)
                                (*thread* . *thread*))
-           :name "Telegram bot thread")))
+           :name (if name
+                     (uiop:strcat "Telegram bot '" name "' thread")
+                     "Telegram bot thread"))))
   (defun stop ()
     (bt:destroy-thread *thread*)))
