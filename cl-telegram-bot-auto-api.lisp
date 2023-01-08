@@ -240,25 +240,11 @@ Bot token and method name is appended to it.")
             'undefined
             :specifier (class-of object)))
   (:method ((update update))
-    (macrolet ((when-apply-on (slot)
-                 (alexandria:once-only ((value `(when (slot-boundp update (quote ,slot))
-                                                  (,slot update))))
-                   `(when ,value
-                      (on ,value)))))
-      (when-apply-on message)
-      (when-apply-on edited-message)
-      (when-apply-on channel-post)
-      (when-apply-on edited-channel-post)
-      (when-apply-on inline-query)
-      (when-apply-on chosen-inline-result)
-      (when-apply-on callback-query)
-      (when-apply-on shipping-query)
-      (when-apply-on pre-checkout-query)
-      (when-apply-on poll)
-      (when-apply-on poll-answer)
-      (when-apply-on chat-member)
-      (when-apply-on my-chat-member)
-      (when-apply-on chat-join-request)))
+    (dolist (slot (remove 'update-id
+                          (mapcar #'closer-mop:slot-definition-name
+                                  (closer-mop:class-slots (class-of update)))))
+      (when (slot-boundp update slot)
+        (on (funcall slot update)))))
   (:documentation "The universal method to call on event objects Telegram gives.
 Default method only defined for `update', other methods throw `unimplemented' error."))
 
