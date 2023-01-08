@@ -252,6 +252,11 @@ Default method only defined for `update', other methods throw `unimplemented' er
 (defun start (token &key name update-callback error-callback (timeout 10))
   "Start the bot designated by the provided TOKEN and return the thread processing happens on.
 
+You can start several bots with this, and they will work just fine on
+their own threads (with the exception of `on' methods being shared
+between those due to CLOS single-threaded-ness). You can stop any of
+those with, e.g., `bt:destroy-thread'.
+
 Process the updates and their contents with `on' or UPDATE-CALLBACK, if provided.
 On error, call either `on' or ERROR-CALLBACK (if provided) with the error as the sole argument.
 
