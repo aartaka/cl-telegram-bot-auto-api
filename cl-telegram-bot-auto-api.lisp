@@ -1,18 +1,26 @@
 (in-package #:cl-telegram-bot-auto-api)
 
 (serapeum:eval-always
-  (defvar *tg-api-json-url* "https://raw.githubusercontent.com/rockneurotiko/telegram_api_json/master/exports/tg_api.json")
-  (defvar *tg-api-json-pathname* (asdf:system-relative-pathname "cl-telegram-bot-auto-api" "telegram_api_json/exports/tg_api.json"))
+  (defvar *tg-api-json-pathname*
+    (asdf:system-relative-pathname "cl-telegram-bot-auto-api" "telegram_api_json/exports/tg_api.json")
+    "The pathname to find API JSON file at.")
+  (defvar *tg-api-json-url*
+    "https://raw.githubusercontent.com/rockneurotiko/telegram_api_json/master/exports/tg_api.json"
+    "The URL to fetch the API JSON file from in case it's not found locally.")
   (defvar *types* (serapeum:dict 'equal
                                  "int" 'integer
                                  "float" 'float
                                  "str" 'string
                                  "file" 'pathname
                                  "bool" 't
-                                 "array" 'sequence))
-  (defvar *parents* (serapeum:dict))
-  (defvar *api-url* "https://api.telegram.org/")
-  (defvar *token* nil))
+                                 "array" 'sequence)
+    "The table with all the types TG-AUTO-API has, from the Telegram name to Lisp type.")
+  (defvar *parents* (serapeum:dict)
+    "The hash table from the subclasses to their generic classes.")
+  (defvar *api-url* "https://api.telegram.org/"
+    "The base URL to send bot methods to.
+Bot token and method name is appended to it.")
+  (defvar *token* nil "Telegram bot token. Bound per bot thread."))
 
 (defun parse-as (class-symbol object)
   (etypecase object
@@ -252,7 +260,7 @@
       (when-apply-on my-chat-member)
       (when-apply-on chat-join-request)))
   (:documentation "The universal method to call on event objects Telegram gives.
-Default method only defined for `update', other methods throw"))
+Default method only defined for `update', other methods throw `unimplemented' error."))
 
 (serapeum:export-always 'start)
 (defun start (token &key name update-callback (timeout 10))
