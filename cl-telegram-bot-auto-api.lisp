@@ -44,16 +44,18 @@
              (format stream "ON not implemented for ~a"
                      (specifier condition)))))
 
-(defgeneric unparse (object)
-  (:method ((object t))
-    object)
-  (:method ((object telegram-object))
-    (loop for slot in (mapcar #'closer-mop:slot-definition-name
-                              (closer-mop:class-slots (class-of object)))
-          when (slot-boundp object slot)
-            collect (cons (string-downcase (substitute #\_ #\- (symbol-name slot)))
-                          (unparse (slot-value object slot)))))
-  (:documentation "Transform the object into an NJSON-friendly alist of literal values when necessary."))
+(serapeum:eval-always
+  (defclass telegram-object () ())
+  (defgeneric unparse (object)
+    (:method ((object t))
+      object)
+    (:method ((object telegram-object))
+      (loop for slot in (mapcar #'closer-mop:slot-definition-name
+                                (closer-mop:class-slots (class-of object)))
+            when (slot-boundp object slot)
+              collect (cons (string-downcase (substitute #\_ #\- (symbol-name slot)))
+                            (unparse (slot-value object slot)))))
+    (:documentation "Transform the object into an NJSON-friendly alist of literal values when necessary.")))
 
 (defun invoke-method (method-name &rest args &key &allow-other-keys)
   (let ((return (njson:decode
@@ -73,7 +75,6 @@
                 'telegram-error :description (njson:jget "description" return)))))
 
 (serapeum:eval-always
-  (defclass telegram-object () ())
   (defun json->name (json-name)
     (intern
      (cond
