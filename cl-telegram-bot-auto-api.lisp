@@ -2,7 +2,7 @@
 
 (serapeum:eval-always
   (defvar *tg-api-json-url* "https://raw.githubusercontent.com/rockneurotiko/telegram_api_json/master/exports/tg_api.json")
-  (defvar *tg-api-json-pathname* (asdf:system-relative-pathname "cl-telegram-bot-auto-api" "telegram_api_json/tg_api.json"))
+  (defvar *tg-api-json-pathname* (asdf:system-relative-pathname "cl-telegram-bot-auto-api" "telegram_api_json/exports/tg_api.json"))
   (defvar *types* (serapeum:dict 'equal
                                  "int" 'integer
                                  "float" 'float
@@ -36,6 +36,17 @@
 ~a"
                      (description condition)))))
 
+(defgeneric unparse (object)
+  (:method ((object t))
+    object)
+  (:method ((object telegram-object))
+    (loop for slot in (mapcar #'closer-mop:slot-definition-name
+                              (closer-mop:class-slots (class-of object)))
+          when (slot-boundp object slot)
+            collect (cons (string-downcase (substitute #\_ #\- (symbol-name slot)))
+                          (unparse (slot-value object slot)))))
+  (:documentation "Transform the object into an NJSON-friendly alist of literal values when necessary."))
+
 (defun invoke-method (method-name &rest args &key &allow-other-keys)
   (let ((return (njson:decode
                  (apply #'dex:post
@@ -47,7 +58,7 @@
                                 (njson:encode
                                  (loop for (key . value) in (alexandria:plist-alist args)
                                        collect (cons (string-downcase (substitute #\_ #\- (symbol-name key)))
-                                                     value)))))))))
+                                                     (unparse value))))))))))
     (if (njson:jget "ok" return)
         (njson:jget "result" return)
         (error 'telegram-error :description (njson:jget "description" return)))))
