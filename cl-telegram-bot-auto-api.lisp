@@ -261,7 +261,7 @@ On error, call either `on' or ERROR-CALLBACK (if provided) with the error as the
 
 NAME is used to name the thread for bot update processing.
 TIMEOUT is passed to `get-updates'."
-  (macrolet ((with-protect (&body body)
+  (macrolet ((with-protect (error-callback &body body)
                `(handler-bind ((error ,(or error-callback #'on)))
                   ,@body)))
     (setf *thread*
@@ -269,14 +269,14 @@ TIMEOUT is passed to `get-updates'."
            (lambda ()
              (loop with last-id = nil
                    while t
-                   for updates = (with-protect
-                                     (apply #'get-updates
-                                            :timeout timeout
-                                            (when last-id
-                                              (list :offset last-id))))
+                   for updates = (with-protect error-callback
+                                   (apply #'get-updates
+                                          :timeout timeout
+                                          (when last-id
+                                            (list :offset last-id))))
                    when updates
-                     do (with-protect
-                            (map nil (or update-callback #'on) updates))
+                     do (with-protect error-callback
+                          (map nil (or update-callback #'on) updates))
                    do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))))
            :initial-bindings `((*token* . ,token))
            :name (if name
