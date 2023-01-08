@@ -256,7 +256,7 @@ Process the updates and their contents with `on' or UPDATE-CALLBACK, if provided
 On error, call either `on' or ERROR-CALLBACK (if provided) with the error as the sole argument.
 
 NAME is used to name the thread for bot update processing.
-TIMEOUT is passed to `get-updates'"
+TIMEOUT is passed to `get-updates'."
   (macrolet ((with-protect (&body body)
                `(handler-bind ((error ,(or error-callback #'on)))
                   ,@body)))
