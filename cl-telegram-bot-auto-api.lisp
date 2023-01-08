@@ -210,8 +210,8 @@
                                                   (njson:jget "description" p)))
                                         params))))))
   (defmacro define-tg-apis ()
-    (let ((api (njson:decode (or (ignore-errors (dex:get *tg-api-json-url*))
-                                 *tg-api-json-pathname*))))
+    (let ((api (njson:decode (or *tg-api-json-pathname*
+                                 (ignore-errors (dex:get *tg-api-json-url*))))))
       `(progn
          ,@(define-generics (njson:jget "generics" api))
          ,@(define-classes (njson:jget "models" api))
