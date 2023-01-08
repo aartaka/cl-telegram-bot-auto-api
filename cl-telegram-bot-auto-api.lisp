@@ -61,7 +61,8 @@
                                                      (unparse value))))))))))
     (if (njson:jget "ok" return)
         (njson:jget "result" return)
-        (error 'telegram-error :description (njson:jget "description" return)))))
+        (cerror "Ignore this error"
+                'telegram-error :description (njson:jget "description" return)))))
 
 (serapeum:eval-always
   (defclass telegram-object () ())
