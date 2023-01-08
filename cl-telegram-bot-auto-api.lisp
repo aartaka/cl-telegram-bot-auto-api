@@ -1,7 +1,7 @@
 (in-package #:cl-telegram-bot-auto-api)
 
 (serapeum:export-always
-    '(*tg-api-json-pathname* *tg-api-json-url* *api-url* *token*))
+    '(*tg-api-json-pathname* *tg-api-json-url* *api-url* *token* *continue-on-error*))
 (serapeum:eval-always
   (defvar *tg-api-json-pathname*
     (asdf:system-relative-pathname "cl-telegram-bot-auto-api" "telegram_api_json/exports/tg_api.json")
@@ -22,7 +22,10 @@
   (defvar *api-url* "https://api.telegram.org/"
     "The base URL to send bot methods to.
 Bot token and method name is appended to it.")
-  (defvar *token* nil "Telegram bot token. Bound per bot thread."))
+  (defvar *token* nil "Telegram bot token. Bound per bot thread.")
+  (defvar *continue-on-error* nil
+    "Whether to continue/ignore errors and proceed with processing things.
+Production option."))
 
 (defun parse-as (class-symbol object)
   (etypecase object
@@ -265,20 +268,32 @@ Bot token and method name is appended to it.")
 Default method only defined for `update', other methods throw `unimplemented' error."))
 
 (serapeum:export-always 'start)
-(defun start (token &key name update-callback (timeout 10))
-  (setf *thread*
-        (bt:make-thread
-         (lambda ()
-           (loop with last-id = nil
-                 while t
-                 for updates = (apply #'get-updates
-                                      :timeout timeout
-                                      (when last-id
-                                        (list :offset last-id)))
-                 do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
-                 when updates
-                   do (map nil (or update-callback #'on) updates)))
-         :initial-bindings `((*token* . ,token))
-         :name (if name
-                   (uiop:strcat "Telegram bot '" name "' thread")
-                   "Telegram bot thread"))))
+(defun start (token &key name update-callback (timeout 10) continue-on-error)
+  (macrolet ((with-continue-on-error (&body body)
+               `(handler-bind
+                    ((error #'(lambda (e)
+                                (when *continue-on-error*
+                                  (cond
+                                    ;; TODO: More restarts, like Dexador ones.
+                                    ((find-restart 'continue e)
+                                     (invoke-restart 'continue)))))))
+                  ,@body)))
+    (setf *thread*
+          (bt:make-thread
+           (lambda ()
+             (loop with last-id = nil
+                   while t
+                   for updates = (with-continue-on-error
+                                     (apply #'get-updates
+                                            :timeout timeout
+                                            (when last-id
+                                              (list :offset last-id))))
+                   do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
+                   when updates
+                     do (with-continue-on-error
+                            (map nil (or update-callback #'on) updates))))
+           :initial-bindings `((*token* . ,token)
+                               (*continue-on-error* . ,continue-on-error))
+           :name (if name
+                     (uiop:strcat "Telegram bot '" name "' thread")
+                     "Telegram bot thread")))))
