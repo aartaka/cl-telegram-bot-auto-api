@@ -6,4 +6,5 @@
   :serial t
   :depends-on ("dexador" "quri" "njson/cl-json" "bordeaux-threads" "alexandria" "serapeum")
   :components ((:file "package")
+               (:file "conditions")
                (:file "cl-telegram-bot-auto-api")))
