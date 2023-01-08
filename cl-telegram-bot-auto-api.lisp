@@ -268,8 +268,7 @@ Default method only defined for `update', other methods throw"))
                  do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
                  when updates
                    do (map nil (or update-callback #'on) updates)))
-         :initial-bindings `((*token* . ,token)
-                             (*thread* . *thread*))
+         :initial-bindings `((*token* . ,token))
          :name (if name
                    (uiop:strcat "Telegram bot '" name "' thread")
                    "Telegram bot thread"))))
