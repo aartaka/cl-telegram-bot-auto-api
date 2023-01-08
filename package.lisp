@@ -1,4 +1,4 @@
 (defpackage #:cl-telegram-bot-auto-api
-  (:nicknames #:tga)
+  (:nicknames #:tga #:tg-bot-auto)
   (:shadow :type :length :close :position)
   (:use #:cl))
