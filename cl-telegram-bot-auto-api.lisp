@@ -1,5 +1,7 @@
 (in-package #:cl-telegram-bot-auto-api)
 
+(serapeum:export-always
+    '(*tg-api-json-pathname* *tg-api-json-url* *api-url* *token*))
 (serapeum:eval-always
   (defvar *tg-api-json-pathname*
     (asdf:system-relative-pathname "cl-telegram-bot-auto-api" "telegram_api_json/exports/tg_api.json")
