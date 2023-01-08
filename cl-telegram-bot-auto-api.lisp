@@ -141,12 +141,11 @@ Bot token and method name is appended to it.")
                          for name = (json->name (njson:jget "name" param))
                          collect `(defmethod ,name :around
                                       ((object ,class-name))
-                                    (setf (slot-value object (quote ,name))
-                                          ,(alexandria:if-let
-                                               ((type (set-difference (mapcar #'type-name (njson:jget "type" param))
-                                                                      '(integer float string pathname t nil sequence))))
-                                             `(parse-as (quote ,(first type)) (call-next-method))
-                                             `(call-next-method))))))))
+                                    ,(alexandria:if-let
+                                         ((type (set-difference (mapcar #'type-name (njson:jget "type" param))
+                                                                '(integer float string pathname t nil sequence))))
+                                       `(parse-as (quote ,(first type)) (call-next-method))
+                                       `(call-next-method)))))))
   (defun define-methods (json)
     (loop for method in json
           for params = (njson:jget "params" method)
