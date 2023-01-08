@@ -254,26 +254,22 @@
   (:documentation "The universal method to call on event objects Telegram gives.
 Default method only defined for `update', other methods throw"))
 
-(serapeum:export-always '(start stop))
-(defvar *thread* nil)
-(let (*thread*)
-  (defun start (token &key name update-callback (timeout 10))
-    (setf *thread*
-          (bt:make-thread
-           (lambda ()
-             (loop with last-id = nil
-                   while t
-                   for updates = (apply #'get-updates
-                                        :timeout timeout
-                                        (when last-id
-                                          (list :offset last-id)))
-                   do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
-                   when updates
-                     do (map nil (or update-callback #'on) updates)))
-           :initial-bindings `((*token* . ,token)
-                               (*thread* . *thread*))
-           :name (if name
-                     (uiop:strcat "Telegram bot '" name "' thread")
-                     "Telegram bot thread"))))
-  (defun stop ()
-    (bt:destroy-thread *thread*)))
+(serapeum:export-always 'start)
+(defun start (token &key name update-callback (timeout 10))
+  (setf *thread*
+        (bt:make-thread
+         (lambda ()
+           (loop with last-id = nil
+                 while t
+                 for updates = (apply #'get-updates
+                                      :timeout timeout
+                                      (when last-id
+                                        (list :offset last-id)))
+                 do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
+                 when updates
+                   do (map nil (or update-callback #'on) updates)))
+         :initial-bindings `((*token* . ,token)
+                             (*thread* . *thread*))
+         :name (if name
+                   (uiop:strcat "Telegram bot '" name "' thread")
+                   "Telegram bot thread"))))
