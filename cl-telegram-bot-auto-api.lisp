@@ -264,21 +264,20 @@ TIMEOUT is passed to `get-updates'."
   (macrolet ((with-protect (error-callback &body body)
                `(handler-bind ((error ,(or error-callback #'on)))
                   ,@body)))
-    (setf *thread*
-          (bt:make-thread
-           (lambda ()
-             (loop with last-id = nil
-                   while t
-                   for updates = (with-protect error-callback
-                                   (apply #'get-updates
-                                          :timeout timeout
-                                          (when last-id
-                                            (list :offset last-id))))
-                   when updates
-                     do (with-protect error-callback
-                          (map nil (or update-callback #'on) updates))
-                   do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))))
-           :initial-bindings `((*token* . ,token))
-           :name (if name
-                     (uiop:strcat "Telegram bot '" name "' thread")
-                     "Telegram bot thread")))))
+    (bt:make-thread
+     (lambda ()
+       (loop with last-id = nil
+             while t
+             for updates = (with-protect error-callback
+                             (apply #'get-updates
+                                    :timeout timeout
+                                    (when last-id
+                                      (list :offset last-id))))
+             when updates
+               do (with-protect error-callback
+                    (map nil (or update-callback #'on) updates))
+             do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))))
+     :initial-bindings `((*token* . ,token))
+     :name (if name
+               (uiop:strcat "Telegram bot '" name "' thread")
+               "Telegram bot thread"))))
