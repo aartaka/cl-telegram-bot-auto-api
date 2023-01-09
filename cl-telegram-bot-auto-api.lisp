@@ -248,7 +248,7 @@ Bot token and method name is appended to it.")
 Default method only defined for `update', other methods throw `unimplemented' error."))
 
 (serapeum:export-always 'start)
-(defun start (token &key name update-callback error-callback (timeout 10))
+(defmethod start (token &key name update-callback error-callback (timeout 10))
   "Start the bot designated by the provided TOKEN and return the thread processing happens on.
 
 You can start several bots with this, and they will work just fine on
