@@ -52,17 +52,20 @@ Bot token and method name is appended to it.")
 
 (defun invoke-method (method-name &rest args &key &allow-other-keys)
   (let ((return (njson:decode
-                 (apply #'dex:post
-                        (quri:render-uri (quri:make-uri :path (uiop:strcat "bot" *token* "/" method-name)
-                                                        :defaults *api-url*))
-                        :headers '(("Content-Type" . "application/json"))
-                        (when args
-                          (list :content
-                                (njson:encode
-                                 (loop for (key . value) in (alexandria:plist-alist args)
-                                       collect (cons (string-downcase (substitute #\_ #\- (symbol-name key)))
-                                                     (unparse value))))))))))
-    (if (njson:jget "ok" return)
+                 (handler-case
+                     (apply #'dex:post
+                            (quri:render-uri (quri:make-uri :path (uiop:strcat "bot" *token* "/" method-name)
+                                                            :defaults *api-url*))
+                            :headers '(("Content-Type" . "application/json"))
+                            (when args
+                              (list :content
+                                    (njson:encode
+                                     (loop for (key . value) in (alexandria:plist-alist args)
+                                           collect (cons (string-downcase (substitute #\_ #\- (symbol-name key)))
+                                                         (unparse value)))))))
+                   (dex:http-request-failed (e)
+                     (dex:response-body e))))))
+    (if (ignore-errors (njson:jget "ok" return))
         (njson:jget "result" return)
         (cerror "Ignore this error"
                 'telegram-error :description (njson:jget "description" return)))))
