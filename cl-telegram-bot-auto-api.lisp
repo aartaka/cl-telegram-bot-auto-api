@@ -240,8 +240,8 @@ Bot token and method name is appended to it.")
 (serapeum:export-always 'on)
 (defgeneric on (object)
   (:method ((object t))
-    (cerror "Ignore undefined method."
-            'undefined
+    (cerror "Ignore unimplemented method."
+            'unimplemented
             :specifier (class-of object)))
   (:method ((update update))
     (dolist (slot (remove 'update-id
