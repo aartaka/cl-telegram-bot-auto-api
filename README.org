@@ -1,0 +1,84 @@
+#+TITLE:cl-telegram-bot-auto-api — automatically-generated Telegam Bot API bindings for Common Lisp
+
+This library aims to make Telegram bots writing easy on the part of making sure all the bindings are available and up-to-date. It stems from the problem one has with (otherwise perfect) [[https://github.com/40ants/cl-telegram-bot][cl-telegram-bot]]—one has to add lots of methods to even make one's bot ideas tested. This library solves the problem of having to write Telegram Bot API bindings by hand—all the classes and methods are generated automatically at load-time from [[https://github.com/rockneurotiko/telegram_api_json][telegram_api_json]] JSON files.
+
+* Getting Started
+** Installing the library
+Git-cloning (recursively)
+#+begin_src sh
+  git clone --recursive https://github.com/aartaka/cl-telegram-bot-auto-api.git
+#+end_src
+and ASDF-loading
+#+begin_src lisp
+  (asdf:load-system :cl-telegram-bot-auto-api)
+#+end_src
+should be enough to get started with this library, given that you have
+- Dexador,
+- Quri,
+- NJSON,
+- Bordeaux Threads,
+- Alexandria,
+- and Serapeum installed.
+
+** Dispatching ~on~ events
+Let's try making a simple echo bot, as in [[https://github.com/40ants/cl-telegram-bot][cl-telegram-bot README]]. Having a chat with BotFather and getting an access token is implied. Echo bot should respond to incoming messages with the same text they contain. We can use the ~tga:copy-mesage~ for that just fine:
+#+begin_src lisp
+  (defmethod tga:on ((message tga:message))
+    "Respond to the message with the same text it contains (actually using `tga:copy-message')."
+    (tga:copy-message (tga:id (tga:chat message)) (tga:id (tga:chat message)) (tga:message-id message)))
+#+end_src
+or we can rely on a lower-level things, like ~message~ slots (note that you'd better use the accessors instead of ~slot-value~ when dealing with ~cl-telegram-bot-auto-api~ objects, because the accessors do lots of intuitive parsing of otherwise raw-ish objects these classes contain):
+#+begin_src lisp
+  (defmethod tga:on ((message tga:message))
+    "Respond to the MESSAGE with the same text it contains."
+    (tga:send-message (tga:id (tga:chat message)) (tga:text message)))
+#+end_src
+
+As you can see, ~tga:on~ is the main entry point for the (inherently event-driven) Telegram API (as implemented in this library). It's on only restricted to ~message~ processing, the ~update~ slots (and eponymous classes) it processes are:
+- ~edited-message~,
+- ~channel-post~,
+- ~edited-channel-post~,
+- ~inline-query~,
+- ~chosen-inline-result~,
+- ~callback-query~,
+- ~shipping-query~,
+- ~pre-checkout-query~,
+- ~poll~,
+- ~poll-answer~,
+- ~chat-member~,
+- ~my-chat-member~,
+- ~chat-join-request~,
+- ~bot-command~,
+- and others that ~update~ may contain in the future you're loading this library in.
+
+An additional use for ~on~ that you may be interested in is... error handling. In case something goes wrong (~error~-level wrong), ~on~ is called with the error instance in the ~handler-bind~ context of this error. So, if you want to invoke some restarts or do something fancy with the error, ~on~ is the place to do so! For example, if something goes wrong in our echo bot, we can rest assured things will be fine with this method:
+
+#+begin_src lisp
+  (defmethod tga:on ((object error))
+    "Invoke CONTINUE restart of OBJECT, if found."
+    (when (find-restart 'continue object)
+      (invoke-restart 'continue)))
+#+end_src
+
+** Finally, starting the bot
+~tga:start~ is the ultimate entry point to start your bot with. Simply pass the token and rock! (you can also pass the token and a ~:name~, so that the newly created bot thread is easier to find by name...)
+#+begin_src lisp
+  (tga:start "YOUR-TOKEN" :name "My echo bot")
+#+end_src
+
+This:
+- Creates a new thread.
+- Binds ~tga:*token*~ to the one you provided for all the methods in this thread.
+- Calls ~tga:get-updates~ repetitively.
+  - And then invokes either ~:update-callback~ or ~tga:on~ with each of the fetched updates.
+  - In case of errors, calls either ~:error-callback~ or ~tga:on~ as the error handler.
+
+* Design Decisions
+The biggest goals/ideals for this library were:
+- Not bothering with API bindings :: getting to writing the actual bot sooner, not having to care about up-to-date API bindings and contributing to someone else's library.
+- Being flexible to API changes :: no matter when you load the library (even if Telegram API has a version 103 by then), it should load just fine with all the available API methods, given that the JSON it's parsed from is the same. I mean, that's a lot of "if"-s, but much less that with the hand-written bindings that tend to go obsolete the moment they are appear.
+- Being flexible to one's style :: This library is a terribly thin wrapper, so it is more likely to fit with your programming style than bigger and more opinionated libraries.
+  - In particular, ~tga:on~, this universal processor for everything, may be totally ignored, if you provide ~tga:start~ with ~:update-callback~ and ~:error-callback~ arguments and do your work there.
+  - You don't need to define a class for every bot: simply call ~tga:start~ with different tokens, and it will spawn separate threads with bot-specific data. Then simply ~bt:destroy-thread~ the ones you no longer need, and you're done!
+- Being image-based and lispy :: this library code is /not/ good for understanding what it does. ~asdf:load-system~ it, ~describe~ the symbols you see, read the ~documentation~ of the classes and functions it exposes. Use the facilities Lisp provides to interact with this library and understand what is there inside it.
+  - While this library is implied for interactive REPL use, no one forbids you from compiling a binary calling ~tga:start~ in its entry point. See the "Being flexible to one's style" point :)
