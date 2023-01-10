@@ -314,8 +314,9 @@ TIMEOUT is passed to `get-updates'."
                                       (list :offset last-id))))
              when updates
                do (with-protect error-callback
-                    (map nil (or update-callback #'on) updates))
-             do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))))
+                    (mapc (or update-callback #'on) updates))
+             do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
+             do (sleep 1)))
      :initial-bindings `((*token* . ,token))
      :name (if name
                (uiop:strcat "Telegram bot '" name "' thread")
