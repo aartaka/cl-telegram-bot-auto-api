@@ -246,6 +246,27 @@ Bot token and method name is appended to it.")
 
 (define-tg-apis)
 
+(defgeneric id (object)
+  (:method ((update update))
+    (update-id update))
+  (:method ((result chosen-inline-result))
+    (result-id result))
+  (:method ((message message))
+    (message-id message))
+  (:method ((message message-id))
+    (message-id message))
+  (:generic-function-class telegram-method))
+
+(defmethod no-applicable-method ((fn telegram-method) &rest args)
+  (apply fn
+         (nthcdr (or (position-if #'keywordp args) (length args))
+                 args)
+         (loop for arg in args
+               until (keywordp arg)
+               if (find-method #'id '() (list (class-of arg)))
+                 collect (id arg)
+               else collect arg)))
+
 (serapeum:export-always 'on)
 (defgeneric on (object)
   (:method ((object t))
