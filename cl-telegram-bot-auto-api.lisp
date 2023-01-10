@@ -256,7 +256,9 @@ Bot token and method name is appended to it.")
     (message-id message))
   (:method ((message message-id))
     (message-id message))
-  (:generic-function-class telegram-method))
+  (:generic-function-class telegram-method)
+  (:documentation "Universal ID-fetching method for all types of objects.
+Even those not having ID property in Telegram API."))
 
 (defmethod no-applicable-method ((fn telegram-method) &rest args)
   (apply fn
