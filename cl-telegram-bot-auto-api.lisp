@@ -246,6 +246,7 @@ Bot token and method name is appended to it.")
 
 (define-tg-apis)
 
+;; NOTE: Exported already, no need to `serapeum:export-always'.
 (defgeneric id (object)
   (:method ((update update))
     (update-id update))
