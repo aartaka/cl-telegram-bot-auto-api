@@ -269,7 +269,9 @@ Bot token and method name is appended to it.")
 
 (serapeum:export-always 'on)
 (defgeneric on (object)
-  (:method ((object t))
+  (:method ((object null))
+    nil)
+  (:method ((object telegram-object))
     (cerror "Ignore unimplemented method."
             'unimplemented
             :specifier (class-of object)))
@@ -277,8 +279,7 @@ Bot token and method name is appended to it.")
     (dolist (slot (remove 'update-id
                           (mapcar #'closer-mop:slot-definition-name
                                   (closer-mop:class-slots (class-of update)))))
-      (when (slot-boundp update slot)
-        (on (funcall slot update)))))
+      (on (funcall slot update))))
   (:method :after ((message message))
     (dolist (entity (entities message))
       (on entity)))
