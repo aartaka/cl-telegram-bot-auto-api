@@ -1,8 +1,7 @@
 (in-package #:cl-telegram-bot-auto-api)
 
-(serapeum:export-always
-    '(*tg-api-json-pathname* *tg-api-json-url* *api-url* *token*))
 (serapeum:eval-always
+  (export '(*tg-api-json-pathname* *tg-api-json-url* *api-url* *token*))
   (defvar *tg-api-json-pathname*
     (asdf:system-relative-pathname "cl-telegram-bot-auto-api" "telegram_api_json/exports/tg_api.json")
     "The pathname to find API JSON file at.")
@@ -38,6 +37,7 @@ Bot token and method name is appended to it.")
          object))))
 
 (serapeum:eval-always
+  (export 'telegram-object)
   (defclass telegram-object () ())
   (defgeneric unparse (object)
     (:method ((object t))
