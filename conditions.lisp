@@ -3,16 +3,16 @@
 (serapeum:export-always 'telegram-error)
 (define-condition telegram-error (error)
   ((description :initarg :description
-                :accessor description))
+                :accessor telegram-error-description))
   (:report (lambda (condition stream)
              (format stream "Telegram error:
 ~a"
-                     (description condition)))))
+                     (telegram-error-description condition)))))
 
 (serapeum:export-always 'unimplemented)
 (define-condition unimplemented (error)
   ((specifier :initarg :specifier
-              :accessor specifier))
+              :accessor unimplemented-specifier))
   (:report (lambda (condition stream)
              (format stream "ON not implemented for ~a"
-                     (specifier condition)))))
+                     (unimplemented-specifier condition)))))
