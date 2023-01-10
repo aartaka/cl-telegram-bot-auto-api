@@ -260,13 +260,13 @@ Bot token and method name is appended to it.")
 
 (defmethod no-applicable-method ((fn telegram-method) &rest args)
   (apply fn
-         (nthcdr (or (position-if #'keywordp args) (length args))
-                 args)
          (loop for arg in args
                until (keywordp arg)
                if (find-method #'id '() (list (class-of arg)))
                  collect (id arg)
-               else collect arg)))
+               else collect arg)
+         (nthcdr (or (position-if #'keywordp args) (length args))
+                 args)))
 
 (serapeum:export-always 'on)
 (defgeneric on (object)
