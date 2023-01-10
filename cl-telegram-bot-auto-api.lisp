@@ -71,6 +71,9 @@ Bot token and method name is appended to it.")
                 'telegram-error :description (njson:jget "description" return)))))
 
 (serapeum:eval-always
+  (defclass telegram-method (standard-generic-function)
+    ()
+    (:metaclass closer-mop:funcallable-standard-class))
   (defun json->name (json-name)
     (intern
      (cond
@@ -132,7 +135,6 @@ Bot token and method name is appended to it.")
                        (,@(loop for param in (njson:jget "params" class)
                                 for name = (json->name (njson:jget "name" param))
                                 collect `(,(json->name (njson:jget "name" param))
-                                          :accessor ,(json->name (njson:jget "name" param))
                                           :initarg ,(alexandria:make-keyword (json->name (njson:jget "name" param)))
                                           :documentation ,(njson:jget "description" param))))
                        (:documentation ,(njson:jget "description" class))))
@@ -142,18 +144,21 @@ Bot token and method name is appended to it.")
           append (let ((class-name class-name))
                    (loop for param in (njson:jget "params" class)
                          for name = (json->name (njson:jget "name" param))
-                         collect `(defmethod ,name :around
-                                      ((object ,class-name))
-                                    (handler-case
-                                        (values
-                                         ,(alexandria:if-let
-                                              ((type (set-difference (mapcar #'type-name (njson:jget "type" param))
-                                                                     '(integer float string pathname t nil sequence))))
-                                            `(parse-as (quote ,(first type)) (call-next-method))
-                                            `(call-next-method))
-                                         t)
-                                      (unbound-slot ()
-                                        (values nil nil))))))))
+                         collect `(defgeneric ,name (object)
+                                    (:method ((object ,class-name))
+                                      (slot-value object (quote ,name)))
+                                    (:method :around ((object ,class-name))
+                                      (handler-case
+                                          (values
+                                           ,(alexandria:if-let
+                                                ((type (set-difference (mapcar #'type-name (njson:jget "type" param))
+                                                                       '(integer float string pathname t nil sequence))))
+                                              `(parse-as (quote ,(first type)) (call-next-method))
+                                              `(call-next-method))
+                                           t)
+                                        (unbound-slot ()
+                                          (values nil nil))))
+                                    (:generic-function-class telegram-method))))))
   (defun define-methods (json)
     (loop for method in json
           for params = (njson:jget "params" method)
@@ -219,6 +224,7 @@ Bot token and method name is appended to it.")
                                                        '(&allow-other-keys))))
                                    (declare (ignorable ,@optional-arg-names))
                                    ,(method-body method required-arg-names optional-args))))))
+                     (:generic-function-class telegram-method)
                      (:documentation ,(apply
                                        #'concatenate
                                        'string
