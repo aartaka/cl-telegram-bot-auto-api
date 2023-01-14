@@ -261,14 +261,20 @@ Bot token and method name is appended to it.")
 Even those not having ID property in Telegram API."))
 
 (defmethod no-applicable-method ((fn telegram-method) &rest args)
-  (apply fn
-         (loop for arg in args
-               until (keywordp arg)
-               if (find-method #'id '() (list (class-of arg)))
-                 collect (id arg)
-               else collect arg)
-         (nthcdr (or (position-if #'keywordp args) (length args))
-                 args)))
+  (let* ((new-required (loop for arg in args
+                             until (keywordp arg)
+                             if (find-method #'id '() (list (class-of arg)) nil)
+                               collect (id arg)
+                             else collect arg))
+         (specifiers (loop for req in new-required
+                           if (subtypep (type-of req) 'standard-object)
+                             collect (class-of req)
+                           else collect (find-class (first (uiop:ensure-list (type-of req))) nil)))
+         (new-key (nthcdr (or (position-if #'keywordp args) (cl:length args))
+                          args))
+         (new-arglist (append new-required new-key)))
+    (when (find-method fn '() specifiers nil)
+      (apply fn new-arglist))))
 
 (serapeum:export-always 'on)
 (defgeneric on (object)
