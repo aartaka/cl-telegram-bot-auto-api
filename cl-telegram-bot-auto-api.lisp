@@ -47,7 +47,7 @@ Bot token and method name is appended to it.")
                                 (closer-mop:class-slots (class-of object)))
             when (slot-boundp object slot)
               collect (cons (string-downcase (substitute #\_ #\- (symbol-name slot)))
-                            (unparse (slot-value object slot)))))
+                            (unparse (funcall slot object)))))
     (:documentation "Transform the object into an NJSON-friendly alist of literal values when necessary.")))
 
 (defun invoke-method (method-name &rest args &key &allow-other-keys)
