@@ -280,6 +280,10 @@ Bot token and method name is appended to it.")
     (cerror "Ignore unimplemented method."
             'unimplemented
             :specifier (class-of object)))
+  (:method ((object error))
+    (cerror "Ignore unimplemented error handler."
+            'unimplemented
+            :specifier (class-of object)))
   (:method ((update update))
     (dolist (slot (remove 'update-id
                           (mapcar #'closer-mop:slot-definition-name
