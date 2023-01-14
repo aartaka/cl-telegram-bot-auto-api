@@ -247,18 +247,14 @@ Bot token and method name is appended to it.")
 (define-tg-apis)
 
 ;; NOTE: Exported already, no need to `serapeum:export-always'.
-(defgeneric id (object)
-  (:method ((update update))
-    (update-id update))
-  (:method ((result chosen-inline-result))
-    (result-id result))
-  (:method ((message message))
-    (message-id message))
-  (:method ((message message-id))
-    (message-id message))
-  (:generic-function-class telegram-method)
-  (:documentation "Universal ID-fetching method for all types of objects.
-Even those not having ID property in Telegram API."))
+(defmethod id ((update update))
+  (update-id update))
+(defmethod id ((result chosen-inline-result))
+  (result-id result))
+(defmethod id ((message message))
+  (message-id message))
+(defmethod id ((message message-id))
+  (message-id message))
 
 (defmethod no-applicable-method ((fn telegram-method) &rest args)
   (let* ((new-required (loop for arg in args
