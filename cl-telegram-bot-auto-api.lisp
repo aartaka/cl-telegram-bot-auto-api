@@ -26,15 +26,22 @@ Bot token and method name is appended to it.")
 (defun parse-as (class-symbol object)
   (etypecase object
     (hash-table
+     (closer-mop:finalize-inheritance (find-class class-symbol))
      (apply #'make-instance
             class-symbol
-            (loop for (key . value) in (alexandria:hash-table-alist  object)
-                  collect (alexandria:make-keyword (string-upcase (substitute #\- #\_ key)))
-                  collect value)))
+            (loop with slots = (closer-mop:class-slots (find-class class-symbol))
+                  for (key . value) in (alexandria:hash-table-alist  object)
+                  for name = (string-upcase (substitute #\- #\_ key))
+                  for slot = (find name slots
+                                   :test #'string-equal :key #'closer-mop:slot-definition-name)
+                  collect (alexandria:make-keyword name)
+                  if (subtypep (closer-mop:slot-definition-type slot) 'telegram-object)
+                    collect (parse-as (closer-mop:slot-definition-type slot) value)
+                  else
+                    collect value)))
     (sequence (map 'list (alexandria:curry #'parse-as class-symbol)
                    object))
-    (t (unless (typep (find-class class-symbol nil) 'standard-class)
-         object))))
+    (t object)))
 
 (serapeum:eval-always
   (export 'telegram-object)
@@ -136,6 +143,11 @@ Bot token and method name is appended to it.")
                                 for name = (json->name (njson:jget "name" param))
                                 collect `(,(json->name (njson:jget "name" param))
                                           :initarg ,(alexandria:make-keyword (json->name (njson:jget "name" param)))
+                                          :type ,(if (serapeum:single (njson:jget "type" param))
+                                                     (nth-value 1 (type-name (first (njson:jget "type" param))))
+                                                     `(or ,@(mapcar (lambda (type)
+                                                                      (nth-value 1 (type-name type)))
+                                                                    (njson:jget "type" param))))
                                           :documentation ,(njson:jget "description" param))))
                        (:documentation ,(njson:jget "description" class))))
           append (loop for param in (njson:jget "params" class)
