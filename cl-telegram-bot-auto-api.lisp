@@ -309,24 +309,26 @@ On error, call either `on' or ERROR-CALLBACK (if provided) with the error as the
 
 NAME is used to name the thread for bot update processing.
 TIMEOUT is passed to `get-updates'."
-  (macrolet ((with-protect (error-callback &body body)
-               `(handler-bind ((error ,(or error-callback #'on)))
-                  ,@body)))
-    (bt:make-thread
-     (lambda ()
-       (loop with last-id = nil
-             while t
-             for updates = (with-protect error-callback
-                             (apply #'get-updates
-                                    :timeout timeout
-                                    (when last-id
-                                      (list :offset last-id))))
-             when updates
-               do (with-protect error-callback
-                    (mapc (or update-callback #'on) updates))
-             do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
-             do (sleep 1)))
-     :initial-bindings `((*token* . ,token))
-     :name (if name
-               (uiop:strcat "Telegram bot '" name "' thread")
-               "Telegram bot thread"))))
+  (flet ((handle-error (e)
+           (funcall (or error-callback #'on) e)))
+    (macrolet ((with-protect (&body body)
+                 `(handler-bind ((error #'handle-error))
+                    ,@body)))
+      (bt:make-thread
+       (lambda ()
+         (loop with last-id = nil
+               while t
+               for updates = (with-protect
+                                 (apply #'get-updates
+                                        :timeout timeout
+                                        (when last-id
+                                          (list :offset last-id))))
+               when updates
+                 do (with-protect
+                        (mapc (or update-callback #'on) updates))
+               do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
+               do (sleep 1)))
+       :initial-bindings `((*token* . ,token))
+       :name (if name
+                 (uiop:strcat "Telegram bot '" name "' thread")
+                 "Telegram bot thread")))))
