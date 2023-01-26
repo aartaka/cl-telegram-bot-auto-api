@@ -7,6 +7,9 @@ This library aims to make Telegram bots writing easy on the part of making sure 
 Git-cloning (recursively)
 #+begin_src sh
   git clone --recursive https://github.com/aartaka/cl-telegram-bot-auto-api.git
+  # update the telegram_api_json submodule in case it's outdated
+  # (don't forget to open an issue if that's the case)
+  git submodule update -- telegram_api_json
 #+end_src
 and ASDF-loading
 #+begin_src lisp
@@ -51,7 +54,7 @@ As you can see, ~tga:on~ is the main entry point for the (inherently event-drive
 - ~bot-command~,
 - and others that ~update~ may contain in the future you're loading this library in.
 
-An additional use for ~on~ that you may be interested in is... error handling. In case something goes wrong (~error~-level wrong), ~on~ is called with the error instance in the ~handler-bind~ context of this error. So, if you want to invoke some restarts or do something fancy with the error, ~on~ is the place to do so! For example, if something goes wrong in our echo bot, we can rest assured things will be fine with this method:
+An additional use for ~on~ that you may be interested in is... error handling. In case something goes wrong (~error~-level wrong!), ~on~ is called with the error instance in the ~handler-bind~ context of this error. So, if you want to invoke some restarts or do something fancy with the error, ~on~ is the place to do so! For example, if something goes wrong in our echo bot and is continuable (all the errors cl-telegram-auto-api generates are continuable, just in case), we can rest assured things will be fine with this method:
 
 #+begin_src lisp
   (defmethod tga:on ((object error))
@@ -61,7 +64,7 @@ An additional use for ~on~ that you may be interested in is... error handling. I
 #+end_src
 
 ** Finally, starting the bot
-~tga:start~ is the ultimate entry point to start your bot with. Simply pass the token and rock! (you can also pass the token and a ~:name~, so that the newly created bot thread is easier to find by name...)
+~tga:start~ is the ultimate entry point to launch your bot with. Simply pass the token and rock! (you can also pass the token and a ~:name~, so that the newly created bot thread is easier to find by name...)
 #+begin_src lisp
   (tga:start "YOUR-TOKEN" :name "My echo bot")
 #+end_src
@@ -76,9 +79,21 @@ This:
 * Design Decisions
 The biggest goals/ideals for this library were:
 - Not bothering with API bindings :: getting to writing the actual bot sooner, not having to care about up-to-date API bindings and contributing to someone else's library.
-- Being flexible to API changes :: no matter when you load the library (even if Telegram API has a version 103 by then), it should load just fine with all the available API methods, given that the JSON it's parsed from is the same. I mean, that's a lot of "if"-s, but much less that with the hand-written bindings that tend to go obsolete the moment they are appear.
+- Being flexible to API changes :: no matter when you load the library (even if Telegram API has a version 103 by then), it should load just fine with all the available API methods, given that the JSON it's parsed from is the same. I mean, that's a lot of "if"-s, but much less that with the hand-written bindings that tend to go obsolete the moment they are published.
 - Being flexible to one's style :: This library is a terribly thin wrapper, so it is more likely to fit with your programming style than bigger and more opinionated libraries.
   - In particular, ~tga:on~, this universal processor for everything, may be totally ignored, if you provide ~tga:start~ with ~:update-callback~ and ~:error-callback~ arguments and do your work there.
   - You don't need to define a class for every bot: simply call ~tga:start~ with different tokens, and it will spawn separate threads with bot-specific data. Then simply ~bt:destroy-thread~ the ones you no longer need, and you're done!
-- Being image-based and lispy :: this library code is /not/ good for understanding what it does. ~asdf:load-system~ it, ~describe~ the symbols you see, read the ~documentation~ of the classes and functions it exposes. Use the facilities Lisp provides to interact with this library and understand what is there inside it.
+- Being image-based and lispy :: this library source code is /not/ good for understanding what it does, because all the matter is hidden behind code-generating macros. ~asdf:load-system~ it, ~describe~ the symbols you see, read the ~documentation~ of the classes and functions it exposes. Use the facilities Lisp provides to interact with this library and understand what is there inside it.
   - While this library is implied for interactive REPL use, no one forbids you from compiling a binary calling ~tga:start~ in its entry point. See the "Being flexible to one's style" point :)
+
+* Helpers
+Even though providing the full-blown library for immediate bot writing is explicitly not a goal, here are some small helpers that can ease your bot writing and are not likely to ever break, even with automated API generation:
+- Passing objects to method by value :: It's not cool to do ~tga:id~, ~tga:update-id~, ~tga:message-id~ every time you want to ~tga:send-message~ or do something else with several objects that you need to pass by ID. No more! Objects that have an ~tga:id~ method will be automatically turned into respective IDs when passed to methods that accept string/integer IDs instead of objects. So you can easily do:
+#+begin_src lisp
+  (defmethod tga:on ((message tga:message))
+    (tga:copy-message (tga:chat message) ; No ID here.
+                      (tga:chat message) ; And here!
+                      message)) ; And here too!!!
+#+end_src
+- ~tga:id~ :: This enables the previous point: ~tga:id~ applies to every object semantically having an ID (be it ~update-id~, ~message-id~ etc. in Telegram) and returns the most sensible ID for it. No need to scour the docs for this-exact-slot-name-for-ID, just use ~tga:id~!
+- ~tga:command~ :: Command parsing can be hard, especially when there are bot-mentioned commands and some complex text following them. ~tga:command~ (initially just a slot reader for ~bot-command~ class) allows you to get the command name and the remaining text for ~update~ or ~message~ objects, just as a convenience for easy command parsing/dispatch. Shamelessly stolen from [[https://github.com/40ants/cl-telegram-bot][cl-telegram-bot]] as a feature worth having in every Telegram Bot API library!
