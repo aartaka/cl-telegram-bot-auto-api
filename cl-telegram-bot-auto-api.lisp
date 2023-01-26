@@ -81,7 +81,7 @@ Bot token and method name is appended to it.")
   (defclass telegram-method (standard-generic-function)
     ()
     (:metaclass closer-mop:funcallable-standard-class))
-  (defun json->name (json-name)
+  (defun json->name (json-name &optional (package :tga))
     (intern
      (cond
        ((some #'upper-case-p json-name)
@@ -90,7 +90,7 @@ Bot token and method name is appended to it.")
         (string-upcase (substitute #\- #\_ json-name)))
        (t
         (cl-json:simplified-camel-case-to-lisp json-name)))
-     :tga))
+     package))
   (defun type-name (type)
     "Returns two values:
 - Primitive `parse-as'-friendly type, preferably atomic.  If the TYPE
@@ -267,6 +267,32 @@ Bot token and method name is appended to it.")
   (message-id message))
 (defmethod id ((message message-id))
   (message-id message))
+
+;; NOTE: Exported already, no need to `serapeum:export-always'.
+(defmethod command ((update update))
+  "Returns:
+- Command name, as a Lisp keyword,
+- Text of the message after the command, with the leading spaces stripped off."
+  (when (message update)
+    (command (message update))))
+(defmethod command ((message message))
+  "Returns:
+- Command name, as a Lisp keyword,
+- Text of the message after the command, with the leading spaces stripped off."
+  (dolist (entity (entities message))
+    (with-accessors ((offset offset) (length length) (type type))
+        entity
+      (when (equal "bot_command" type)
+        (let ((command (subseq (text message) (1+ offset) (+ offset length))))
+          (return-from command
+            (values
+             (json->name
+              (alexandria:if-let ((at-pos (cl:position #\@ command :test #'char=)))
+                (subseq command 0 at-pos)
+                command)
+              :keyword)
+             (uiop:strcat (subseq (text message) 0 offset)
+                          (string-trim serapeum:whitespace (subseq (text message) (+ offset length)))))))))))
 
 (defmethod no-applicable-method ((fn telegram-method) &rest args)
   (let* ((new-required (loop for arg in args
