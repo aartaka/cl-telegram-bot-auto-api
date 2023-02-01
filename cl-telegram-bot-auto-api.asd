@@ -7,4 +7,9 @@
   :depends-on ("dexador" "quri" "njson/cl-json" "bordeaux-threads" "alexandria" "serapeum")
   :components ((:file "package")
                (:file "conditions")
-               (:file "cl-telegram-bot-auto-api")))
+               (:file "cl-telegram-bot-auto-api")
+               (:module "JSON"
+                :pathname "telegram_api_json"
+                :components
+                ((:static-file "exports/tg_api.json")
+                 (:static-file "exports/tg_api_pretty.json")))))
