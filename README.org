@@ -59,8 +59,7 @@ An additional use for ~on~ that you may be interested in is... error handling. I
 #+begin_src lisp
   (defmethod tga:on ((object error))
     "Invoke CONTINUE restart of OBJECT, if found."
-    (when (find-restart 'continue object)
-      (invoke-restart 'continue)))
+    (continue))
 #+end_src
 
 ** Finally, starting the bot
