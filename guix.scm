@@ -66,14 +66,16 @@
     '(#:asd-systems '("cl-telegram-bot-auto-api")))
    (synopsis "Auto-generated Common Lisp API for Telegram Bots.")
    (home-page "https://github.com/aartaka/cl-telegram-bot-auto-api")
-   (description "This library aims to make Telegram bots writing easy on the part of
-making sure all the bindings are available and up-to-date. It stems
-from the problem one has with (otherwise perfect)
+   (description "This library aims to make Telegram bots writing easy.
+Easy on the part of making sure all the bindings are available and
+up-to-date. It stems from the problem one has with (otherwise perfect)
 @code{cl-telegram-bot}—one has to add lots of methods to even make
-one's bot ideas tested. This library solves the problem of having to
+one's bot ideas tested.
+
+This library solves the problem of having to
 write Telegram Bot API bindings by hand—all the classes and methods
-are generated automatically at load-time from
-@code{telegram_api_json} JSON files.\n")
+are generated automatically at load-time from @code{telegram_api_json}
+JSON files.\n")
    (license license:bsd-2)))
 
 (define-public cl-telegram-bot-auto-api
