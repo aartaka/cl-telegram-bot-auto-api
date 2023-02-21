@@ -318,10 +318,8 @@ Bot token and method name is appended to it.")
     (cerror "Ignore unimplemented method."
             'unimplemented
             :specifier (class-of object)))
-  (:method ((object error))
-    (cerror "Ignore unimplemented error handler."
-            'unimplemented
-            :specifier (class-of object)))
+  (:method ((object condition))
+    (uiop:print-backtrace :condition object))
   (:method ((update update))
     (dolist (slot (remove 'update-id
                           (mapcar #'closer-mop:slot-definition-name
@@ -348,8 +346,7 @@ On error, call either `on' or ERROR-CALLBACK (if provided) with the error as the
 NAME is used to name the thread for bot update processing.
 TIMEOUT is passed to `get-updates'."
   (flet ((handle-error (e)
-           (when (find-method #'on '() (list (class-of e)) nil)
-             (funcall (or error-callback #'on) e))))
+           (funcall (or error-callback #'on) e)))
     (macrolet ((with-protect (&body body)
                  `(handler-bind ((error #'handle-error))
                     ,@body)))
