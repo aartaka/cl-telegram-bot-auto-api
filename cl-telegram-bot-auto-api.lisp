@@ -348,7 +348,8 @@ On error, call either `on' or ERROR-CALLBACK (if provided) with the error as the
 NAME is used to name the thread for bot update processing.
 TIMEOUT is passed to `get-updates'."
   (flet ((handle-error (e)
-           (funcall (or error-callback #'on) e)))
+           (when (find-method #'on '() (list (class-of e)) nil)
+             (funcall (or error-callback #'on) e))))
     (macrolet ((with-protect (&body body)
                  `(handler-bind ((error #'handle-error))
                     ,@body)))
