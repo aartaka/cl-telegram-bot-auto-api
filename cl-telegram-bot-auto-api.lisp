@@ -310,7 +310,8 @@ Bot token and method name is appended to it.")
         ;; much too often...
         (let ((*applicable-method-depth* (1+ *applicable-method-depth*)))
           (apply fn new-arglist)))
-      (error 'serapeum:no-applicable-method-error)))
+      (cerror "Ignore it"
+              "Cannot find any applicable method for function ~a with arguments ~a" fn args)))
 
 (serapeum:export-always 'on)
 (defgeneric on (object)
