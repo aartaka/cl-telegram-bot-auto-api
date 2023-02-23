@@ -307,8 +307,9 @@ Bot token and method name is appended to it.")
          (new-key (nthcdr (or (position-if #'keywordp args) (cl:length args))
                           args))
          (new-arglist (append new-required new-key)))
-    (when (find-method fn '() specifiers nil)
-      (apply fn new-arglist))))
+    ;; FIXME: This is reckless, but `find-method' seems to misbehave
+    ;; much too often...
+    (apply fn new-arglist)))
 
 (serapeum:export-always 'on)
 (defgeneric on (object)
