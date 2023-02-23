@@ -294,22 +294,23 @@ Bot token and method name is appended to it.")
              (uiop:strcat (subseq (text message) 0 offset)
                           (string-trim serapeum:whitespace (subseq (text message) (+ offset length)))))))))))
 
+(defvar *applicable-method-depth* 0)
+
 (defmethod no-applicable-method ((fn telegram-method) &rest args)
-  (let* ((new-required (loop for arg in args
-                             until (keywordp arg)
-                             if (find-method #'id '() (list (class-of arg)) nil)
-                               collect (id arg)
-                             else collect arg))
-         (specifiers (loop for req in new-required
-                           if (subtypep (type-of req) 'standard-object)
-                             collect (class-of req)
-                           else collect (find-class (first (uiop:ensure-list (type-of req))) nil)))
-         (new-key (nthcdr (or (position-if #'keywordp args) (cl:length args))
-                          args))
-         (new-arglist (append new-required new-key)))
-    ;; FIXME: This is reckless, but `find-method' seems to misbehave
-    ;; much too often...
-    (apply fn new-arglist)))
+  (if (zerop *applicable-method-depth*)
+      (let* ((new-required (loop for arg in args
+                                 until (keywordp arg)
+                                 if (find-method #'id '() (list (class-of arg)) nil)
+                                   collect (id arg)
+                                 else collect arg))
+             (new-key (nthcdr (or (position-if #'keywordp args) (cl:length args))
+                              args))
+             (new-arglist (append new-required new-key)))
+        ;; FIXME: This is reckless, but `find-method' seems to misbehave
+        ;; much too often...
+        (let ((*applicable-method-depth* (1+ *applicable-method-depth*)))
+          (apply fn new-arglist)))
+      (error 'serapeum:no-applicable-method-error)))
 
 (serapeum:export-always 'on)
 (defgeneric on (object)
