@@ -325,9 +325,6 @@ Bot token and method name is appended to it.")
                           (mapcar #'closer-mop:slot-definition-name
                                   (closer-mop:class-slots (class-of update)))))
       (on (funcall slot update))))
-  (:method :after ((message message))
-    (dolist (entity (entities message))
-      (on entity)))
   (:documentation "The universal method to call on event objects Telegram gives.
 Default method only defined for `update', other methods throw `unimplemented' error."))
 
