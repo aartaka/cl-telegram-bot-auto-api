@@ -57,6 +57,15 @@ Bot token and method name is appended to it.")
                             (unparse (funcall slot object)))))
     (:documentation "Transform the object into an NJSON-friendly alist of literal values when necessary.")))
 
+(defmethod print-object ((object telegram-object) stream)
+  (print-unreadable-object (object stream :type t)
+    (when (id object)
+      (format stream "~a=~a" 'id (id object)))
+    (dolist (slot (mapcar #'closer-mop:slot-definition-name
+                          (closer-mop:class-slots (class-of object))))
+      (when (slot-boundp object slot)
+        (format stream " ~a=~a" slot (funcall slot object))))))
+
 (defun invoke-method (method-name &rest args &key &allow-other-keys)
   (let ((return (njson:decode
                  (handler-case
