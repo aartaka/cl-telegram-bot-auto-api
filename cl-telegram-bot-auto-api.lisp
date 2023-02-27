@@ -59,7 +59,7 @@ Bot token and method name is appended to it.")
 
 (defmethod print-object ((object telegram-object) stream)
   (print-unreadable-object (object stream :type t)
-    (when (id object)
+    (when (ignore-errors (id object))
       (format stream "~a=~a" 'id (id object)))
     (dolist (slot (mapcar #'closer-mop:slot-definition-name
                           (closer-mop:class-slots (class-of object))))
