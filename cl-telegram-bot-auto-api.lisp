@@ -21,7 +21,9 @@
   (defvar *api-url* "https://api.telegram.org/"
     "The base URL to send bot methods to.
 Bot token and method name is appended to it.")
-  (defvar *token* nil "Telegram bot token. Bound per bot thread."))
+  (defvar *token* nil "Telegram bot token. Bound per bot thread.")
+  (defvar *timeout* 10
+    "The timeout for telegram requests and waiting on response. Bound per bot thread."))
 
 (defun parse-as (class-symbol object)
   (etypecase object
@@ -73,6 +75,8 @@ Bot token and method name is appended to it.")
                             (quri:render-uri (quri:make-uri :path (uiop:strcat "bot" *token* "/" method-name)
                                                             :defaults *api-url*))
                             :headers '(("Content-Type" . "application/json"))
+                            :read-timeout *timeout*
+                            :connect-timeout *timeout*
                             (when args
                               (list :content
                                     (njson:encode
@@ -341,7 +345,7 @@ Bot token and method name is appended to it.")
 Default method only defined for `update', other methods throw `unimplemented' error."))
 
 (serapeum:export-always 'start)
-(defmethod start (token &key name update-callback error-callback (timeout 10))
+(defmethod start (token &key name update-callback error-callback (timeout *timeout*))
   "Start the bot designated by the provided TOKEN and return the thread processing happens on.
 
 You can start several bots with this, and they will work just fine on
@@ -370,7 +374,8 @@ TIMEOUT is passed to `get-updates'."
                   (mapc (or update-callback #'on) updates))
            do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
            do (sleep 1)))
-   :initial-bindings `((*token* . ,token))
+   :initial-bindings `((*token* . ,token)
+                       (*timeout* ,timeout))
    :name (if name
              (uiop:strcat "Telegram bot '" name "' thread")
              "Telegram bot thread")))
