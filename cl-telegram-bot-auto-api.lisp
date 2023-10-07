@@ -111,38 +111,40 @@ Bot token and method name is appended to it.")
   corresponding Lisp array type.
 - The outermost type. Same as the first value, unless array TYPE."
     (cond
-     ((listp type)
+     ((arrayp type)
       (let* ((inner-type (labels ((inner-type (type)
                                     (cond
-                                      ((and (listp type)
-                                            (equal "array" (first type)))
-                                       (inner-type (caadr type)))
-                                      ((listp type)
-                                       (first type))
+                                      ((and (arrayp type)
+					    (not (stringp type))
+                                            (equal "array" (elt type 0)))
+                                       (inner-type (elt (elt type 1) 0)))
+                                      ((and (arrayp type)
+					    (not (stringp type)))
+                                       (elt type 0))
                                       (t type))))
                            (inner-type type)))
              (inner-type (or (gethash inner-type *types*)
                              (json->name inner-type))))
         (values
          inner-type
-         (if (equal "array" (first type))
+         (if (equal "array" (elt type 0))
              'sequence
              inner-type))))
      (t (let ((type (or (gethash type *types*)
                         (json->name type))))
           (values type type)))))
-  (defun define-generics (json)
-    (loop for generic in json
+  (defun define-generics (generics)
+    (loop for generic across generics
           for name = (json->name (njson:jget "name" generic))
           do (setf (gethash (njson:jget "name" generic) *types*)
                    name)
-          do (dolist (subtype (njson:jget "subtypes" generic))
-               (setf (gethash (json->name subtype) *parents*)
-                     name))
+          do (loop for subtype across (njson:jget "subtypes" generic)
+		   do (setf (gethash (json->name subtype) *parents*)
+			    name))
           collect `(serapeum:export-always (quote ,name))
           collect `(defclass ,name (telegram-object) ())))
-  (defun define-classes (json)
-    (loop for class in json
+  (defun define-classes (classes)
+    (loop for class across classes
           for class-name
             = (json->name (njson:jget "name" class))
           do (setf (gethash (njson:jget "name" class) *types*)
@@ -152,22 +154,22 @@ Bot token and method name is appended to it.")
                     `(defclass ,class-name (,@(if (gethash class-name *parents*)
                                                   (list (gethash class-name *parents*))
                                                   (list 'telegram-object)))
-                       (,@(loop for param in (njson:jget "params" class)
+                       (,@(loop for param across (njson:jget "params" class)
                                 for name = (json->name (njson:jget "name" param))
                                 collect `(,(json->name (njson:jget "name" param))
                                           :initarg ,(alexandria:make-keyword (json->name (njson:jget "name" param)))
                                           :type ,(if (serapeum:single (njson:jget "type" param))
-                                                     (nth-value 1 (type-name (first (njson:jget "type" param))))
-                                                     `(or ,@(mapcar (lambda (type)
-                                                                      (nth-value 1 (type-name type)))
-                                                                    (njson:jget "type" param))))
+                                                     (nth-value 1 (type-name (elt (njson:jget "type" param) 0)))
+                                                     `(or ,@(map 'list (lambda (type)
+									 (nth-value 1 (type-name type)))
+								 (njson:jget "type" param))))
                                           :documentation ,(njson:jget "description" param))))
                        (:documentation ,(njson:jget "description" class))))
-          append (loop for param in (njson:jget "params" class)
+          append (loop for param across (njson:jget "params" class)
                        collect `(serapeum:export-always
                                     (quote ,(json->name (njson:jget "name" param)))))
           append (let ((class-name class-name))
-                   (loop for param in (njson:jget "params" class)
+                   (loop for param across (njson:jget "params" class)
                          for name = (json->name (njson:jget "name" param))
                          collect `(defgeneric ,name (object)
                                     (:generic-function-class telegram-method))
@@ -177,15 +179,15 @@ Bot token and method name is appended to it.")
                                     (handler-case
                                         (values
                                          ,(alexandria:if-let
-                                              ((type (set-difference (mapcar #'type-name (njson:jget "type" param))
+                                              ((type (set-difference (map 'list #'type-name (njson:jget "type" param))
                                                                      '(integer float string pathname t nil sequence))))
-                                            `(parse-as (quote ,(first type)) (call-next-method))
+                                            `(parse-as (quote ,(elt type 0)) (call-next-method))
                                             `(call-next-method))
                                          t)
                                       (unbound-slot ()
                                         (values nil nil))))))))
-  (defun define-methods (json)
-    (loop for method in json
+  (defun define-methods (methods)
+    (loop for method across methods
           for params = (njson:jget "params" method)
           for method-name
             = (json->name (njson:jget "name" method))
@@ -193,38 +195,41 @@ Bot token and method name is appended to it.")
             = (remove-if (alexandria:curry #'njson:jget "optional")
                          params)
           for required-arg-names
-            = (loop for arg in required-args
+            = (loop for arg across required-args
                     collect (json->name (njson:jget "name" arg)))
           for optional-args
-            = (set-difference params required-args)
+            = (remove-if (lambda (p) (find p required-args))
+			 params)
           for optional-arg-names
-            = (loop for arg in optional-args
+            = (loop for arg across optional-args
                     collect (json->name (njson:jget "name" arg)))
           collect `(serapeum:export-always (quote ,method-name))
           collect `(defgeneric ,method-name
                        (,@required-arg-names
-                        ,@(when optional-args
-                            (append '(&rest args &key)
-                                    optional-arg-names
-                                    '(&allow-other-keys))))
+                        ,@(when (plusp (cl:length optional-args))
+			    (append '(&rest args &key)
+				    optional-arg-names
+				    '(&allow-other-keys))))
                      (:generic-function-class telegram-method)
                      (:documentation ,(apply
                                        #'concatenate
                                        'string
                                        (njson:jget "description" method)
                                        (string #\newline)
-                                       (mapcar
-                                        (lambda (p)
-                                          (format nil "~:@(~a~) -- ~a~&"
-                                                  (substitute #\- #\_ (njson:jget "name" p))
-                                                  (njson:jget "description" p)))
-                                        params))))
+                                       (map 'list
+					    (lambda (p)
+					      (format nil "~:@(~a~) -- ~a~&"
+						      (substitute #\- #\_ (njson:jget "name" p))
+						      (njson:jget "description" p)))
+					    params))))
           append (labels ((type-combinations (types)
-                            (if (rest types)
-                                (loop for type in (first types)
-                                      append (loop for ending in (type-combinations (rest types))
-                                                   collect (cons type ending)))
-                                (mapcar #'list (first types))))
+			    (cond
+			      ((> (cl:length types) 1)
+			       (loop for type in (elt types 0)
+				     append (loop for ending in (type-combinations (subseq types 1))
+						  collect (cons type ending))))
+			      ((= (cl:length types) 1)
+			       (map 'list #'list (elt types 0)))))
                           (method-body (method required-arg-names rest-args?)
                             `(let ((result
                                      (apply
@@ -234,33 +239,33 @@ Bot token and method name is appended to it.")
                                        (list ,@(loop for name in required-arg-names
                                                      append (list (alexandria:make-keyword name)
                                                                   name)))
-                                       ,(if rest-args? 'args '())))))
+                                       ,(when rest-args? 'args)))))
                                ,(if (equal '("true") (njson:jget "return" method))
                                     'result
                                     `(parse-as (quote ,(type-name (njson:jget "return" method)))
                                                result)))))
                    (let ((combinations (type-combinations
-                                        (mapcar (lambda (arg)
-                                                  (mapcar (lambda (type) (nth-value 1 (type-name type)))
+                                        (map 'list (lambda (arg)
+						     (map 'list (lambda (type) (nth-value 1 (type-name type)))
                                                           (njson:jget "type" arg)))
-                                                required-args))))
+					     required-args))))
                      (if combinations
                          (loop for combination in combinations
                                collect `(defmethod ,method-name (,@(loop for name in required-arg-names
                                                                          for type in combination
                                                                          collect (list name type))
-                                                                 ,@(when optional-args
+                                                                 ,@(when (plusp (cl:length optional-args))
                                                                      (append '(&rest args &key)
                                                                              optional-arg-names
                                                                              '(&allow-other-keys))))
                                           (declare (ignorable ,@required-arg-names ,@optional-arg-names))
-                                          ,(method-body method required-arg-names optional-args)))
-                         `((defmethod ,method-name (,@(when optional-args
+                                          ,(method-body method required-arg-names (plusp (cl:length optional-args)))))
+                         `((defmethod ,method-name (,@(when (plusp (cl:length optional-args))
                                                         (append '(&rest args &key)
                                                                 optional-arg-names
                                                                 '(&allow-other-keys))))
                              (declare (ignorable ,@optional-arg-names))
-                             ,(method-body method required-arg-names optional-args))))))))
+                             ,(method-body method required-arg-names (plusp (cl:length optional-args))))))))))
   (defmacro define-tg-apis ()
     (let ((api (njson:decode (or *tg-api-json-pathname*
                                  (ignore-errors (dex:get *tg-api-json-url*))))))
