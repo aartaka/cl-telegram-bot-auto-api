@@ -30,7 +30,7 @@
 (define-public sbcl-telegram-bot-auto-api
   (package
    (name "sbcl-telegram-bot-auto-api")
-   (version "0.1.0")
+   (version "0.1.1")
    (source
     (local-file (dirname (current-filename)) #:recursive? #t)
     ;;;; Or this, in case of contributing to Guix.
