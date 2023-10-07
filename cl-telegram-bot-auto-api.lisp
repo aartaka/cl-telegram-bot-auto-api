@@ -375,7 +375,7 @@ TIMEOUT is passed to `get-updates'."
            do (setf last-id (1+ (reduce #'max updates :key #'update-id :initial-value 0)))
            do (sleep 1)))
    :initial-bindings `((*token* . ,token)
-                       (*timeout* ,timeout))
+                       (*timeout* . ,timeout))
    :name (if name
              (uiop:strcat "Telegram bot '" name "' thread")
              "Telegram bot thread")))
