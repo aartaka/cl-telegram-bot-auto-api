@@ -4,10 +4,10 @@
   (export '(*tg-api-json-pathname* *tg-api-json-url* *api-url* *token*))
   (defvar *tg-api-json-pathname*
     (asdf:system-relative-pathname "cl-telegram-bot-auto-api" "telegram_api_json/exports/tg_api.json")
-    "The pathname to find API JSON file at.")
+    "The pathname to find API JSON file at")
   (defvar *tg-api-json-url*
     "https://raw.githubusercontent.com/rockneurotiko/telegram_api_json/master/exports/tg_api.json"
-    "The URL to fetch the API JSON file from in case it's not found locally.")
+    "The URL to fetch the API JSON file from in case it's not found locally")
   (defvar *types* (serapeum:dict 'equal
                                  "int" 'integer
                                  "float" 'float
@@ -15,13 +15,13 @@
                                  "file" 'pathname
                                  "bool" 't
                                  "array" 'sequence)
-    "The table with all the types TG-AUTO-API has, from the Telegram name to Lisp type.")
+    "The table with all the types TG-AUTO-API has, from the Telegram name to Lisp type")
   (defvar *parents* (serapeum:dict)
-    "The hash table from the subclasses to their generic classes.")
+    "The hash table from the subclasses to their generic classes")
   (defvar *api-url* "https://api.telegram.org/"
     "The base URL to send bot methods to.
-Bot token and method name is appended to it.")
-  (defvar *token* nil "Telegram bot token. Bound per bot thread.")
+Bot token and method name is appended to it")
+  (defvar *token* nil "Telegram bot token. Bound per bot thread")
   (defvar *timeout* 10
     "The timeout for telegram requests and waiting on response. Bound per bot thread."))
 
@@ -57,7 +57,7 @@ Bot token and method name is appended to it.")
             when (slot-boundp object slot)
               collect (cons (string-downcase (substitute #\_ #\- (symbol-name slot)))
                             (unparse (funcall slot object)))))
-    (:documentation "Transform the object into an NJSON-friendly alist of literal values when necessary.")))
+    (:documentation "Transform the object into an NJSON-friendly alist of literal values when necessary")))
 
 (defmethod print-object ((object telegram-object) stream)
   (print-unreadable-object (object stream :type t)
@@ -105,7 +105,7 @@ Bot token and method name is appended to it.")
         (cl-json:simplified-camel-case-to-lisp json-name)))
      package))
   (defun type-name (type)
-    "Returns two values:
+    "Return two values:
 - Primitive `parse-as'-friendly type, preferably atomic.  If the TYPE
   is a mere \"array\" without element type, then, well, returns the
   corresponding Lisp array type.
@@ -288,13 +288,13 @@ Bot token and method name is appended to it.")
 
 ;; NOTE: Exported already, no need to `serapeum:export-always'.
 (defmethod command ((update update))
-  "Returns:
+  "Return:
 - Command name, as a Lisp keyword,
 - Text of the message after the command, with the leading spaces stripped off."
   (when (message update)
     (command (message update))))
 (defmethod command ((message message))
-  "Returns:
+  "Return:
 - Command name, as a Lisp keyword,
 - Text of the message after the command, with the leading spaces stripped off."
   (dolist (entity (entities message))
@@ -346,12 +346,12 @@ Bot token and method name is appended to it.")
                           (mapcar #'closer-mop:slot-definition-name
                                   (closer-mop:class-slots (class-of update)))))
       (on (funcall slot update))))
-  (:documentation "The universal method to call on event objects Telegram gives.
+  (:documentation "The universal method to call on event objects Telegram gives
 Default method only defined for `update', other methods throw `unimplemented' error."))
 
 (serapeum:export-always 'start)
 (defmethod start (token &key name update-callback error-callback (timeout *timeout*))
-  "Start the bot designated by the provided TOKEN and return the thread processing happens on.
+  "Start the bot designated by the provided TOKEN and return the thread processing happens on
 
 You can start several bots with this, and they will work just fine on
 their own threads (with the exception of `on' methods being shared
