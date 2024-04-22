@@ -1,6 +1,9 @@
 (asdf:defsystem "cl-telegram-bot-auto-api"
   :description "Auto-generated Common Lisp API for Telegram Bots."
   :author "Artyom Bologov"
+  :homepage "https://github.com/aartaka/cl-telegram-bot-auto-api"
+  :bug-tracker "https://github.com/aartaka/cl-telegram-bot-auto-api/issues"
+  :source-control (:git "https://github.com/aartaka/cl-telegram-bot-auto-api.git")
   :license  "BSD 2-Clause"
   :version "0.1.1"
   :serial t
