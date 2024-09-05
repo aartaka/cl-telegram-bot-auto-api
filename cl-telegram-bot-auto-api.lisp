@@ -62,11 +62,11 @@ Bot token and method name is appended to it")
 (defmethod print-object ((object telegram-object) stream)
   (print-unreadable-object (object stream :type t)
     (when (ignore-errors (id object))
-      (format stream "~a=~a" 'id (id object)))
+      (cl:format stream "~a=~a" 'id (id object)))
     (dolist (slot (mapcar #'closer-mop:slot-definition-name
                           (closer-mop:class-slots (class-of object))))
       (when (slot-boundp object slot)
-        (format stream " ~a=~a" slot (funcall slot object))))))
+        (cl:format stream " ~a=~a" slot (funcall slot object))))))
 
 (defun invoke-method (method-name &rest args &key &allow-other-keys)
   (let ((return (njson:decode
@@ -141,7 +141,7 @@ Bot token and method name is appended to it")
           do (loop for subtype across (njson:jget "subtypes" generic)
 		   do (setf (gethash (json->name subtype) *parents*)
 			    name))
-          collect `(serapeum:export-always (quote ,name))
+          collect `(serapeum:export-always ',name)
           collect `(defclass ,name (telegram-object) ())))
   (defun define-classes (classes)
     (loop for class across classes
@@ -149,7 +149,7 @@ Bot token and method name is appended to it")
             = (json->name (njson:jget "name" class))
           do (setf (gethash (njson:jget "name" class) *types*)
                    class-name)
-          collect `(serapeum:export-always (quote ,class-name))
+          collect `(serapeum:export-always ',class-name)
           collect (let ((class-name class-name))
                     `(defclass ,class-name (,@(if (gethash class-name *parents*)
                                                   (list (gethash class-name *parents*))
@@ -167,21 +167,21 @@ Bot token and method name is appended to it")
                        (:documentation ,(njson:jget "description" class))))
           append (loop for param across (njson:jget "params" class)
                        collect `(serapeum:export-always
-                                    (quote ,(json->name (njson:jget "name" param)))))
+                                    ',(json->name (njson:jget "name" param))))
           append (let ((class-name class-name))
                    (loop for param across (njson:jget "params" class)
                          for name = (json->name (njson:jget "name" param))
                          collect `(defgeneric ,name (object)
                                     (:generic-function-class telegram-method))
                          collect `(defmethod ,name ((object ,class-name))
-                                    (slot-value object (quote ,name)))
+                                    (slot-value object ',name))
                          collect `(defmethod ,name :around ((object ,class-name))
                                     (handler-case
                                         (values
                                          ,(alexandria:if-let
                                               ((type (set-difference (map 'list #'type-name (njson:jget "type" param))
                                                                      '(integer float string pathname t nil sequence))))
-                                            `(parse-as (quote ,(elt type 0)) (call-next-method))
+                                            `(parse-as ',(elt type 0) (call-next-method))
                                             `(call-next-method))
                                          t)
                                       (unbound-slot ()
@@ -203,7 +203,7 @@ Bot token and method name is appended to it")
           for optional-arg-names
             = (loop for arg across optional-args
                     collect (json->name (njson:jget "name" arg)))
-          collect `(serapeum:export-always (quote ,method-name))
+          collect `(serapeum:export-always ',method-name)
           collect `(defgeneric ,method-name
                        (,@required-arg-names
                         ,@(when (plusp (cl:length optional-args))
@@ -218,9 +218,9 @@ Bot token and method name is appended to it")
                                        (string #\newline)
                                        (map 'list
 					    (lambda (p)
-					      (format nil "~:@(~a~) -- ~a~&"
-						      (substitute #\- #\_ (njson:jget "name" p))
-						      (njson:jget "description" p)))
+					      (cl:format nil "~:@(~a~) -- ~a~&"
+                                                         (substitute #\- #\_ (njson:jget "name" p))
+                                                         (njson:jget "description" p)))
 					    params))))
           append (labels ((type-combinations (types)
 			    (cond
@@ -242,7 +242,7 @@ Bot token and method name is appended to it")
                                        ,(when rest-args? 'args)))))
                                ,(if (equalp #("true") (njson:jget "return" method))
                                     'result
-                                    `(parse-as (quote ,(type-name (elt (njson:jget "return" method) 0)))
+                                    `(parse-as ',(type-name (elt (njson:jget "return" method) 0))
                                                result)))))
                    (let ((combinations (type-combinations
                                         (map 'list (lambda (arg)

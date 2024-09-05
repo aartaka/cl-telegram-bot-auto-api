@@ -1,4 +1,4 @@
-(defpackage #:cl-telegram-bot-auto-api
+(uiop:define-package #:cl-telegram-bot-auto-api
   (:nicknames #:tga #:tg-bot-auto)
-  (:shadow :type :length :close :position)
+  (:shadow :type :length :close :position :quote :fill :format)
   (:use #:cl))
