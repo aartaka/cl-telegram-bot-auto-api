@@ -240,9 +240,9 @@ Bot token and method name is appended to it")
                                                      append (list (alexandria:make-keyword name)
                                                                   name)))
                                        ,(when rest-args? 'args)))))
-                               ,(if (equal '("true") (njson:jget "return" method))
+                               ,(if (equalp #("true") (njson:jget "return" method))
                                     'result
-                                    `(parse-as (quote ,(type-name (njson:jget "return" method)))
+                                    `(parse-as (quote ,(type-name (elt (njson:jget "return" method) 0)))
                                                result)))))
                    (let ((combinations (type-combinations
                                         (map 'list (lambda (arg)
