@@ -340,6 +340,7 @@ Bot token and method name is appended to it")
             'unimplemented
             :specifier (class-of object)))
   (:method ((object condition))
+    (princ object)
     (uiop:print-backtrace :condition object))
   (:method ((update update))
     (dolist (slot (remove 'update-id
